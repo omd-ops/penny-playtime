@@ -87,7 +87,7 @@ export function ExpensesScreen() {
       setExpenses((prev) =>
         prev.map((e) =>
           e.id === editingId
-            ? { ...e, amount: amt, categoryId, note: note.trim(), date }
+            ? { ...e, amount: amt, categoryId, note: note.trim(), date, type: expenseType }
             : e,
         ),
       );

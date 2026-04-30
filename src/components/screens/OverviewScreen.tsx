@@ -6,7 +6,8 @@ import {
   useSettings,
   getExpensesForMonth,
   getExpensesForDate,
-  sumExpenses,
+  sumDebits,
+  isExpenseDebit,
   getTargetForPeriod,
   formatCurrency,
   todayStr,
@@ -35,9 +36,9 @@ export function OverviewScreen() {
     return getExpensesForMonth(expenses, py, pm);
   }, [expenses, year, month]);
 
-  const monthTotal = sumExpenses(monthExpenses);
-  const todayTotal = sumExpenses(todayExpenses);
-  const prevMonthTotal = sumExpenses(prevMonthExpenses);
+  const monthTotal = sumDebits(monthExpenses);
+  const todayTotal = sumDebits(todayExpenses);
+  const prevMonthTotal = sumDebits(prevMonthExpenses);
 
   const dailyTarget = getTargetForPeriod(targets, "daily");
   const monthlyTarget = getTargetForPeriod(targets, "monthly");
@@ -47,6 +48,7 @@ export function OverviewScreen() {
   const categoryBreakdown = useMemo(() => {
     const map = new Map<string, number>();
     monthExpenses.forEach((e) => {
+      if (!isExpenseDebit(e)) return;
       map.set(e.categoryId, (map.get(e.categoryId) || 0) + e.amount);
     });
     return Array.from(map.entries())

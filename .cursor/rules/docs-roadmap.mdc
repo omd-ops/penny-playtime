@@ -1,0 +1,15 @@
+---
+description: Product and architecture docs — use when planning features or API work
+globs: docs/**/*.md
+alwaysApply: false
+---
+
+# Documentation map
+
+- **`docs/expense-tracker-documentation.md`:** Product scope, IA, calendar day sheet UX, reports/notifications/voice roadmap, milestones.
+- **`docs/system-design.md`:** Modular monolith, workers, Redis/BullMQ, Web Push — target architecture, not current repo state.
+- **`docs/api-design.md`:** REST `/api/v1` contracts (e.g. `GET /days/:date`, `PUT /days/:date/target-completion`). Use when implementing or mocking a backend.
+- **`docs/db-design.md`:** PostgreSQL tables, money as `NUMERIC`, indexes — reference for migrations.
+- **`docs/open-questions.md`:** PQ/RQ/AQ/DQ/IQ items — check before locking product decisions (e.g. offline-first vs cloud-first).
+
+When implementing a doc feature in the **current localStorage app**, note the gap in PR/commit message if API/schema is not yet wired.

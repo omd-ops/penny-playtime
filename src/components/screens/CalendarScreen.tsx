@@ -6,7 +6,9 @@ import {
   useDayFlags,
   useSettings,
   getExpensesForDate,
-  sumExpenses,
+  sumDebits,
+  sumCredits,
+  isExpenseDebit,
   getTargetForPeriod,
   formatCurrency,
   getBudgetStatus,
@@ -63,12 +65,15 @@ export function CalendarScreen() {
   }, [viewYear, viewMonth]);
 
   // Day totals for the month
-  const dayTotals = useMemo(() => {
-    const map = new Map<string, number>();
+  const dayRollups = useMemo(() => {
+    const map = new Map<string, { debit: number; credit: number }>();
+    const prefix = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`;
     expenses.forEach((e) => {
-      if (e.date.startsWith(`${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`)) {
-        map.set(e.date, (map.get(e.date) || 0) + e.amount);
-      }
+      if (!e.date.startsWith(prefix)) return;
+      const cur = map.get(e.date) || { debit: 0, credit: 0 };
+      if (isExpenseDebit(e)) cur.debit += e.amount;
+      else cur.credit += e.amount;
+      map.set(e.date, cur);
     });
     return map;
   }, [expenses, viewYear, viewMonth]);
@@ -86,7 +91,8 @@ export function CalendarScreen() {
 
   // Day detail
   const selExpenses = selectedDate ? getExpensesForDate(expenses, selectedDate) : [];
-  const selTotal = sumExpenses(selExpenses);
+  const selDebited = sumDebits(selExpenses);
+  const selCredited = sumCredits(selExpenses);
   const selFlag = dayFlags.find((f) => f.date === selectedDate);
 
   function toggleFlag() {
@@ -124,8 +130,10 @@ export function CalendarScreen() {
       <div className="grid grid-cols-7 gap-1">
         {grid.map((cell, i) => {
           if (!cell.inMonth) return <div key={i} />;
-          const total = dayTotals.get(cell.dateStr) || 0;
-          const hasExpenses = total > 0;
+          const roll = dayRollups.get(cell.dateStr);
+          const debited = roll?.debit ?? 0;
+          const credited = roll?.credit ?? 0;
+          const hasActivity = debited > 0 || credited > 0;
           const isToday = cell.dateStr === today;
           const flag = dayFlags.find((f) => f.date === cell.dateStr);
 
@@ -136,17 +144,19 @@ export function CalendarScreen() {
               className={cn(
                 "relative flex flex-col items-center justify-center rounded-xl py-2 min-h-[52px] text-sm transition-colors",
                 isToday && "ring-2 ring-primary ring-inset",
-                hasExpenses && "bg-accent",
-                !hasExpenses && "hover:bg-muted",
+                hasActivity && "bg-accent",
+                !hasActivity && "hover:bg-muted",
                 selectedDate === cell.dateStr && "bg-primary/10",
               )}
             >
               <span className={cn("font-medium", isToday ? "text-primary" : "text-foreground")}>
                 {cell.day}
               </span>
-              {hasExpenses && (
+              {hasActivity && (
                 <span className="text-[10px] text-muted-foreground mt-0.5">
-                  {settings.currency}{total.toFixed(0)}
+                  {debited > 0 ? `−${settings.currency}${debited.toFixed(0)}` : ""}
+                  {debited > 0 && credited > 0 ? " " : ""}
+                  {credited > 0 ? `+${settings.currency}${credited.toFixed(0)}` : ""}
                 </span>
               )}
               {flag?.metTarget && (
@@ -172,11 +182,11 @@ export function CalendarScreen() {
             <div className="flex items-center justify-between rounded-xl bg-surface p-3">
               <div>
                 <p className="text-xs text-muted-foreground">Debited</p>
-                <p className="text-lg font-bold text-foreground">{formatCurrency(selTotal, settings.currency)}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(selDebited, settings.currency)}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Credited</p>
-                <p className="text-lg font-bold text-foreground">{formatCurrency(0, settings.currency)}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(selCredited, settings.currency)}</p>
               </div>
             </div>
 
@@ -185,9 +195,9 @@ export function CalendarScreen() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-foreground">Daily Target</span>
-                  <StatusBadge status={getBudgetStatus(selTotal, dailyTarget.amount)} />
+                  <StatusBadge status={getBudgetStatus(selDebited, dailyTarget.amount)} />
                 </div>
-                <BudgetBar spent={selTotal} limit={dailyTarget.amount} currency={settings.currency} />
+                <BudgetBar spent={selDebited} limit={dailyTarget.amount} currency={settings.currency} />
               </div>
             )}
 
@@ -221,7 +231,12 @@ export function CalendarScreen() {
                         <p className="text-sm font-medium text-foreground truncate">{cat?.name || "Unknown"}</p>
                         {exp.note && <p className="text-xs text-muted-foreground truncate">{exp.note}</p>}
                       </div>
-                      <span className="text-sm font-semibold text-foreground">
+                      <span
+                        className={`text-sm font-semibold ${
+                          isExpenseDebit(exp) ? "text-red-600" : "text-emerald-600"
+                        }`}
+                      >
+                        {isExpenseDebit(exp) ? "−" : "+"}
                         {formatCurrency(exp.amount, settings.currency)}
                       </span>
                     </div>

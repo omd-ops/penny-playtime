@@ -1,0 +1,12 @@
+---
+description: Penny Pay stack, scope, and where product truth lives
+alwaysApply: true
+---
+
+# Project context
+
+- **Stack:** TanStack Start + TanStack Router + Vite 7 + React 19 + Tailwind v4. Build config comes from `@lovable.dev/vite-tanstack-config` — do not duplicate those plugins in `vite.config.ts` (see file comment).
+- **Deploy target:** Cloudflare (`wrangler.jsonc`, `@cloudflare/vite-plugin`). Local dev: `npm run dev` (Vite; default port often 8080).
+- **Product (UI copy):** Branded “SpendWise” in `src/routes/__root.tsx` meta; repo folder may be `Penny_Pay`. Keep naming consistent when changing titles.
+- **MVP vs docs:** Full vision lives in `docs/` (`expense-tracker-documentation.md`, `system-design.md`, `api-design.md`, `db-design.md`, `open-questions.md`). The app is **local-first**: persistence via `src/lib/store.ts` + `localStorage`, not the REST API in `docs/api-design.md` until that layer exists.
+- **When adding features:** Prefer matching the docs’ domain language (debited/credited, daily target day marks, budget periods). If backend arrives later, align field names with API design (`entryType` debit/credit maps to app `cash-out` / `cash-in`).

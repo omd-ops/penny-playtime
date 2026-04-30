@@ -148,6 +148,19 @@ export function sumExpenses(expenses: Expense[]) {
   return expenses.reduce((s, e) => s + e.amount, 0);
 }
 
+/** Outflows (spend). Missing `type` is treated as cash-out for older localStorage rows. */
+export function isExpenseDebit(e: Expense): boolean {
+  return e.type !== "cash-in";
+}
+
+export function sumDebits(expenses: Expense[]) {
+  return expenses.filter(isExpenseDebit).reduce((s, e) => s + e.amount, 0);
+}
+
+export function sumCredits(expenses: Expense[]) {
+  return expenses.filter((e) => !isExpenseDebit(e)).reduce((s, e) => s + e.amount, 0);
+}
+
 export function getBudgetStatus(spent: number, limit: number): "safe" | "warning" | "over" {
   if (limit <= 0) return "safe";
   const ratio = spent / limit;
