@@ -15,6 +15,7 @@ export interface Expense {
   note: string;
   date: string; // YYYY-MM-DD
   createdAt: string;
+  type?: "cash-in" | "cash-out";
 }
 
 export interface BudgetTarget {
