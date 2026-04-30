@@ -25,6 +25,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Plus, Trash2, Pencil, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
 export function ExpensesScreen() {
@@ -34,6 +35,7 @@ export function ExpensesScreen() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [expenseType, setExpenseType] = useState<"cash-in" | "cash-out">("cash-out");
 
   // Form state
   const [amount, setAmount] = useState("");
@@ -54,8 +56,9 @@ export function ExpensesScreen() {
     setEditingId(null);
   }
 
-  function openAdd() {
+  function openAdd(type: "cash-in" | "cash-out") {
     resetForm();
+    setExpenseType(type);
     setShowForm(true);
   }
 
@@ -65,6 +68,7 @@ export function ExpensesScreen() {
     setCategoryId(exp.categoryId);
     setNote(exp.note);
     setDate(exp.date);
+    setExpenseType(exp.type || "cash-out");
     setShowForm(true);
   }
 
@@ -96,6 +100,7 @@ export function ExpensesScreen() {
         note: note.trim(),
         date,
         createdAt: new Date().toISOString(),
+        type: expenseType,
       };
       setExpenses((prev) => [newExp, ...prev]);
       toast.success("Expense added");
@@ -126,9 +131,22 @@ export function ExpensesScreen() {
     <div className="mx-auto max-w-lg px-4 pt-6">
       <header className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Expenses</h1>
-        <Button onClick={openAdd} size="sm" className="gap-1.5 rounded-xl">
-          <Plus className="h-4 w-4" /> Add
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => openAdd("cash-in")}
+            size="sm"
+            className="gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <ArrowDownLeft className="h-4 w-4" /> Cash In
+          </Button>
+          <Button
+            onClick={() => openAdd("cash-out")}
+            size="sm"
+            className="gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+          >
+            <ArrowUpRight className="h-4 w-4" /> Cash Out
+          </Button>
+        </div>
       </header>
 
       {grouped.length === 0 ? (
@@ -168,8 +186,8 @@ export function ExpensesScreen() {
                             <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
                           )}
                         </div>
-                        <span className="text-sm font-semibold text-foreground">
-                          {formatCurrency(exp.amount, settings.currency)}
+                        <span className={`text-sm font-semibold ${exp.type === "cash-in" ? "text-emerald-600" : "text-red-500"}`}>
+                          {exp.type === "cash-in" ? "+" : "−"}{formatCurrency(exp.amount, settings.currency)}
                         </span>
                         <button
                           onClick={() => openEdit(exp)}
@@ -199,7 +217,13 @@ export function ExpensesScreen() {
       <Sheet open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); resetForm(); } }}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh]">
           <SheetHeader>
-            <SheetTitle>{editingId ? "Edit Expense" : "Add Expense"}</SheetTitle>
+            <SheetTitle>
+              {editingId
+                ? "Edit Expense"
+                : expenseType === "cash-in"
+                  ? "Cash In"
+                  : "Cash Out"}
+            </SheetTitle>
             <SheetDescription>
               {editingId ? "Update the details below." : "Log a new expense in seconds."}
             </SheetDescription>
@@ -253,8 +277,15 @@ export function ExpensesScreen() {
                 className="mt-1 h-12"
               />
             </div>
-            <Button onClick={handleSave} className="w-full h-12 text-base rounded-xl">
-              {editingId ? "Save Changes" : "Add Expense"}
+            <Button
+              onClick={handleSave}
+              className={`w-full h-12 text-base rounded-xl text-white ${
+                expenseType === "cash-in"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-red-600 hover:bg-red-700"
+              }`}
+            >
+              {editingId ? "Save Changes" : expenseType === "cash-in" ? "Add Cash In" : "Add Cash Out"}
             </Button>
           </div>
         </SheetContent>
