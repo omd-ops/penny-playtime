@@ -1,0 +1,13 @@
+---
+description: Routes, screens, navigation, and UI patterns for this app
+globs: src/app/**/*.tsx,src/components/screens/**/*.tsx,src/components/BottomNav.tsx
+alwaysApply: false
+---
+
+# Routes and UI
+
+- **Routes:** App Router under `src/app/`; root shell in `layout.tsx` (`ThemeProvider`, `BottomNav`, `pb-20` for bottom nav). New pages: add `src/app/<segment>/page.tsx` and usually a screen in `src/components/screens/`.
+- **Navigation:** `BottomNav` lists Overview (`/`), Expenses (`/expenses`), Calendar (`/calendar`), Settings (`/settings`). Match active state pattern already used for `/` vs nested paths.
+- **Layout:** Mobile-first, `max-w-lg` + horizontal padding on screens unless building a deliberate desktop shell.
+- **Accessibility:** Touch targets ≥ 44px where interactive; calendar month controls and day cells should keep `aria-label`s when using icon-only buttons.
+- **Sheets:** Prefer bottom `Sheet` for add/edit flows on small viewports (see Expenses and Calendar). Day detail should stay scrollable inside max height.

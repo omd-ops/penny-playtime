@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+// Types and pure helpers for SpendWise. Runtime state lives in `spend-data-provider.tsx` (Supabase + localStorage).
 
-// Types
 export interface Category {
   id: string;
   name: string;
@@ -26,16 +25,50 @@ export interface BudgetTarget {
 
 export interface DayFlag {
   date: string; // YYYY-MM-DD
+  /** User checked off their **daily habits / tasks** for this day (not spending). Field name kept for storage compatibility. */
   metTarget: boolean;
+  /** Custom label for the habits row (e.g. “Gym + wake 7am”). Omit to use default copy. */
+  label?: string;
 }
+
+/** User-defined goals for a calendar day (in addition to the default daily-target checkbox). */
+export interface DayGoal {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  done: boolean;
+}
+
+export interface ImportantNoteItem {
+  id: string;
+  text: string;
+}
+
+/** Habit tabs on the Notes tab (daily uses `dailyHabitItems`; others use `habitPlans` text). */
+export type HabitPlanPeriod = "daily" | "weekly" | "monthly" | "yearly";
+
+/** Longer-form habit notes for weekly / monthly / yearly only. */
+export type HabitPlanTextPeriod = "weekly" | "monthly" | "yearly";
 
 export interface AppSettings {
   currency: string;
   theme: "light" | "dark" | "system";
+  /** Scratchpad shown on the Notes tab; synced with other settings. */
+  notes?: string;
+  /** Bullet lines for the **daily** habit plan (shown on every calendar day). */
+  dailyHabitItems?: ImportantNoteItem[];
+  /** Free text for weekly / monthly / yearly habit plans on the Notes tab. */
+  habitPlans?: Partial<Record<HabitPlanTextPeriod, string>>;
+  /** Bullet-style notes on the Notes tab; `notes` is kept in sync as newline-joined text for older snapshots. */
+  importantNoteItems?: ImportantNoteItem[];
+  /** Browser notifications nudging the user to log daily updates (expenses, calendar, habits). */
+  dailyUpdateRemindersEnabled?: boolean;
+  /** Local wall-clock times in 24h `HH:mm` format. */
+  dailyUpdateReminderTimes?: string[];
 }
 
-// Default categories
-const DEFAULT_CATEGORIES: Category[] = [
+/** Keep in sync with the duplicate list in `spend-data-provider.tsx` (avoids circular imports). */
+export const DEFAULT_CATEGORIES: Category[] = [
   { id: "food", name: "Food & Drinks", color: "#10b981", icon: "🍔" },
   { id: "transport", name: "Transport", color: "#3b82f6", icon: "🚌" },
   { id: "shopping", name: "Shopping", color: "#f59e0b", icon: "🛍️" },
@@ -46,78 +79,33 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "other", name: "Other", color: "#6b7280", icon: "📦" },
 ];
 
-const DEFAULT_SETTINGS: AppSettings = { currency: "$", theme: "system" };
+export const DEFAULT_DAILY_REMINDER_TIMES = ["09:00", "14:00", "19:00"] as const;
 
-// Storage helpers
-function getItem<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+export const DEFAULT_SETTINGS: AppSettings = {
+  currency: "$",
+  theme: "system",
+  notes: "",
+  dailyHabitItems: [],
+  habitPlans: {},
+  importantNoteItems: [],
+  dailyUpdateRemindersEnabled: false,
+  dailyUpdateReminderTimes: [...DEFAULT_DAILY_REMINDER_TIMES],
+};
+
+const HH_MM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+export function isValidReminderTime(s: string): boolean {
+  return HH_MM.test(s.trim());
 }
 
-function setItem<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+/** Dedupe, validate, sort; falls back to defaults if nothing valid remains. */
+export function normalizeDailyReminderTimes(times: string[] | undefined): string[] {
+  if (!times?.length) return [...DEFAULT_DAILY_REMINDER_TIMES];
+  const valid = times.map((t) => t.trim()).filter(isValidReminderTime);
+  if (!valid.length) return [...DEFAULT_DAILY_REMINDER_TIMES];
+  return [...new Set(valid)].sort();
 }
 
-// Event-based reactivity for cross-component sync
-const listeners = new Map<string, Set<() => void>>();
-
-function notify(key: string) {
-  listeners.get(key)?.forEach((fn) => fn());
-}
-
-function useStore<T>(key: string, fallback: T): [T, (updater: T | ((prev: T) => T)) => void] {
-  const [value, setValue] = useState<T>(() => getItem(key, fallback));
-
-  useEffect(() => {
-    const set = listeners.get(key) ?? new Set();
-    const handler = () => setValue(getItem(key, fallback));
-    set.add(handler);
-    listeners.set(key, set);
-    return () => { set.delete(handler); };
-  }, [key]);
-
-  const update = useCallback(
-    (updater: T | ((prev: T) => T)) => {
-      const current = getItem(key, fallback);
-      const next = typeof updater === "function" ? (updater as (prev: T) => T)(current) : updater;
-      setItem(key, next);
-      setValue(next);
-      notify(key);
-    },
-    [key],
-  );
-
-  return [value, update];
-}
-
-// Hooks
-export function useCategories() {
-  return useStore<Category[]>("et_categories", DEFAULT_CATEGORIES);
-}
-
-export function useExpenses() {
-  return useStore<Expense[]>("et_expenses", []);
-}
-
-export function useBudgetTargets() {
-  return useStore<BudgetTarget[]>("et_targets", []);
-}
-
-export function useDayFlags() {
-  return useStore<DayFlag[]>("et_dayflags", []);
-}
-
-export function useSettings() {
-  return useStore<AppSettings>("et_settings", DEFAULT_SETTINGS);
-}
-
-// Helpers
 export function generateId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
@@ -146,6 +134,19 @@ export function getExpensesForYear(expenses: Expense[], year: number) {
 
 export function sumExpenses(expenses: Expense[]) {
   return expenses.reduce((s, e) => s + e.amount, 0);
+}
+
+/** Outflows (spend). Missing `type` is treated as cash-out for older localStorage rows. */
+export function isExpenseDebit(e: Expense): boolean {
+  return e.type !== "cash-in";
+}
+
+export function sumDebits(expenses: Expense[]) {
+  return expenses.filter(isExpenseDebit).reduce((s, e) => s + e.amount, 0);
+}
+
+export function sumCredits(expenses: Expense[]) {
+  return expenses.filter((e) => !isExpenseDebit(e)).reduce((s, e) => s + e.amount, 0);
 }
 
 export function getBudgetStatus(spent: number, limit: number): "safe" | "warning" | "over" {

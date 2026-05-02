@@ -1,0 +1,13 @@
+---
+description: Expense types, totals, and store conventions (matches docs §3.4 / API entryType)
+globs: src/lib/store.ts
+alwaysApply: false
+---
+
+# Expense data model
+
+- **`Expense.type`:** `"cash-out"` (default) = debit / spend; `"cash-in"` = credit / inflow. Rows with missing `type` behave as **cash-out** (backward compatible localStorage).
+- **Budgets and “spent” metrics:** Use **`sumDebits`** / **`isExpenseDebit`** for daily/monthly/yearly **spending caps**, overview totals, and calendar **spending vs budget** bars — **not** `sumExpenses` on mixed lists (credits must not inflate spend).
+- **Calendar day sheet:** Show **debited** and **credited** separately; **spending vs daily budget** uses **debited** only. **`DayFlag.metTarget`** is for **daily habits/tasks** (gym, wake time, etc.) — not the spending budget.
+- **Habit / TODO plans:** `AppSettings.dailyHabitItems` is a bullet list for the **daily** plan (shown on calendar days). `AppSettings.habitPlans` holds optional text for **`weekly` | `monthly` | `yearly`** only. Separate from **`BudgetTarget`** spending caps.
+- **IDs:** `generateId()` for client rows today; if syncing to API later, migrate to server UUIDs per `docs/api-design.md`.

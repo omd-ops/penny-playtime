@@ -1,12 +1,12 @@
+"use client";
+
 import { useMemo } from "react";
+import { useExpenses, useCategories, useBudgetTargets, useSettings } from "@/lib/spend-store";
 import {
-  useExpenses,
-  useCategories,
-  useBudgetTargets,
-  useSettings,
   getExpensesForMonth,
   getExpensesForDate,
-  sumExpenses,
+  sumDebits,
+  isExpenseDebit,
   getTargetForPeriod,
   formatCurrency,
   todayStr,
@@ -35,9 +35,9 @@ export function OverviewScreen() {
     return getExpensesForMonth(expenses, py, pm);
   }, [expenses, year, month]);
 
-  const monthTotal = sumExpenses(monthExpenses);
-  const todayTotal = sumExpenses(todayExpenses);
-  const prevMonthTotal = sumExpenses(prevMonthExpenses);
+  const monthTotal = sumDebits(monthExpenses);
+  const todayTotal = sumDebits(todayExpenses);
+  const prevMonthTotal = sumDebits(prevMonthExpenses);
 
   const dailyTarget = getTargetForPeriod(targets, "daily");
   const monthlyTarget = getTargetForPeriod(targets, "monthly");
@@ -47,6 +47,7 @@ export function OverviewScreen() {
   const categoryBreakdown = useMemo(() => {
     const map = new Map<string, number>();
     monthExpenses.forEach((e) => {
+      if (!isExpenseDebit(e)) return;
       map.set(e.categoryId, (map.get(e.categoryId) || 0) + e.amount);
     });
     return Array.from(map.entries())
@@ -105,11 +106,11 @@ export function OverviewScreen() {
         )}
       </div>
 
-      {/* Daily target strip */}
+      {/* Today's spending vs daily budget cap */}
       {dailyTarget && dailyTarget.amount > 0 ? (
         <div className="mb-4 rounded-2xl bg-card p-4 shadow-sm border border-border/50">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Today</span>
+            <span className="text-sm font-medium text-foreground">Spending today</span>
             <StatusBadge status={getBudgetStatus(todayTotal, dailyTarget.amount)} />
           </div>
           <BudgetBar spent={todayTotal} limit={dailyTarget.amount} currency={settings.currency} />
@@ -120,7 +121,7 @@ export function OverviewScreen() {
             Today: <span className="font-semibold text-foreground">{formatCurrency(todayTotal, settings.currency)}</span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Set a daily target in Settings to track your progress here.
+            Set a daily spending cap in Settings or Notes to compare spending here.
           </p>
         </div>
       )}

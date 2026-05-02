@@ -1,13 +1,8 @@
+"use client";
+
 import { useState, useMemo } from "react";
-import {
-  useExpenses,
-  useCategories,
-  useSettings,
-  formatCurrency,
-  todayStr,
-  generateId,
-  type Expense,
-} from "@/lib/store";
+import { useExpenses, useCategories, useSettings } from "@/lib/spend-store";
+import { formatCurrency, todayStr, generateId, type Expense } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,7 +19,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Plus, Trash2, Pencil, X } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -87,7 +82,7 @@ export function ExpensesScreen() {
       setExpenses((prev) =>
         prev.map((e) =>
           e.id === editingId
-            ? { ...e, amount: amt, categoryId, note: note.trim(), date }
+            ? { ...e, amount: amt, categoryId, note: note.trim(), date, type: expenseType }
             : e,
         ),
       );
@@ -128,36 +123,20 @@ export function ExpensesScreen() {
   }, [sorted]);
 
   return (
-    <div className="mx-auto max-w-lg px-4 pt-6">
-      <header className="mb-4 flex items-center justify-between">
+    <div className="mx-auto max-w-lg px-4 pt-6 pb-36">
+      <header className="mb-4">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Expenses</h1>
-        <div className="flex gap-2">
-          <Button
-            onClick={() => openAdd("cash-in")}
-            size="sm"
-            className="gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
-            <ArrowDownLeft className="h-4 w-4" /> Cash In
-          </Button>
-          <Button
-            onClick={() => openAdd("cash-out")}
-            size="sm"
-            className="gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white"
-          >
-            <ArrowUpRight className="h-4 w-4" /> Cash Out
-          </Button>
-        </div>
       </header>
 
       {grouped.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <span className="text-4xl mb-3">📝</span>
           <p className="text-muted-foreground text-sm">
-            No expenses yet. Tap <strong>Add</strong> to log your first one!
+            No expenses yet. Tap <strong>Cash In</strong> or <strong>Cash Out</strong> below to log your first one!
           </p>
         </div>
       ) : (
-        <div className="space-y-5 pb-4">
+        <div className="space-y-5">
           {grouped.map(([dateStr, items]) => {
             const d = new Date(dateStr + "T12:00:00");
             const label =
@@ -290,6 +269,23 @@ export function ExpensesScreen() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-card/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-lg gap-2 px-4 py-2">
+          <Button
+            onClick={() => openAdd("cash-in")}
+            className="min-h-[44px] flex-1 gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <ArrowDownLeft className="h-4 w-4 shrink-0" /> Cash In
+          </Button>
+          <Button
+            onClick={() => openAdd("cash-out")}
+            className="min-h-[44px] flex-1 gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white"
+          >
+            <ArrowUpRight className="h-4 w-4 shrink-0" /> Cash Out
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
