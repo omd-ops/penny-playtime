@@ -1,13 +1,8 @@
+"use client";
+
 import { useState } from "react";
-import {
-  useCategories,
-  useBudgetTargets,
-  useSettings,
-  useExpenses,
-  generateId,
-  type Category,
-  type BudgetTarget,
-} from "@/lib/store";
+import { useCategories, useBudgetTargets, useSettings, useExpenses } from "@/lib/spend-store";
+import { generateId, type Category, type BudgetTarget } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,7 +20,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useTheme } from "@/components/ThemeProvider";
-import { Plus, Trash2, Sun, Moon, Monitor, ChevronRight, FileSpreadsheet, Bell, Search } from "lucide-react";
+import { Plus, Trash2, Sun, Moon, Monitor, ChevronRight, FileSpreadsheet, Search } from "lucide-react";
+import { DailyUpdateReminderSettings } from "@/components/DailyUpdateReminderSettings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -163,10 +159,12 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      {/* Budget Targets */}
+      <DailyUpdateReminderSettings />
+
+      {/* Spending caps (same data as Notes tab) */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Budget Targets</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Spending caps</h2>
           <Button variant="ghost" size="sm" onClick={() => openTargetForm()} className="gap-1">
             <Plus className="h-4 w-4" /> Add
           </Button>
@@ -174,7 +172,7 @@ export function SettingsScreen() {
         {targets.length === 0 ? (
           <div className="rounded-xl bg-card border border-border/50 p-4 text-center">
             <p className="text-sm text-muted-foreground">
-              No targets set yet. Add one to start tracking your budget! 🎯
+              No spending caps yet. Add one to track spending against a daily, monthly, or yearly limit. 🎯
             </p>
           </div>
         ) : (
@@ -230,7 +228,6 @@ export function SettingsScreen() {
         <div className="space-y-2">
           {[
             { icon: FileSpreadsheet, label: "Reports & Export", desc: "Download Excel, PDF, and CSV" },
-            { icon: Bell, label: "Notifications", desc: "Reminders and budget alerts" },
             { icon: Search, label: "Search & Filter", desc: "Find expenses by date and category" },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50 opacity-60">
@@ -272,8 +269,8 @@ export function SettingsScreen() {
       <Sheet open={showTargetForm} onOpenChange={setShowTargetForm}>
         <SheetContent side="bottom" className="rounded-t-2xl">
           <SheetHeader>
-            <SheetTitle>{editTargetId ? "Edit Target" : "Set Budget Target"}</SheetTitle>
-            <SheetDescription>Define a spending limit for a time period.</SheetDescription>
+            <SheetTitle>{editTargetId ? "Edit spending cap" : "Set spending cap"}</SheetTitle>
+            <SheetDescription>How much you plan to spend per day, month, or year (not habit checklists).</SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4">
             <div>
@@ -294,7 +291,7 @@ export function SettingsScreen() {
               <Input id="target-amount" type="number" inputMode="decimal" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} placeholder="0.00" className="mt-1 h-12 text-lg" />
             </div>
             <Button onClick={saveTarget} className="w-full h-12 rounded-xl">
-              {editTargetId ? "Save Changes" : "Set Target"}
+              {editTargetId ? "Save changes" : "Save cap"}
             </Button>
           </div>
         </SheetContent>

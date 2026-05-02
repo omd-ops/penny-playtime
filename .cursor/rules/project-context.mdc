@@ -5,8 +5,9 @@ alwaysApply: true
 
 # Project context
 
-- **Stack:** TanStack Start + TanStack Router + Vite 7 + React 19 + Tailwind v4. Build config comes from `@lovable.dev/vite-tanstack-config` — do not duplicate those plugins in `vite.config.ts` (see file comment).
-- **Deploy target:** Cloudflare (`wrangler.jsonc`, `@cloudflare/vite-plugin`). Local dev: `npm run dev` (Vite; default port often 8080).
-- **Product (UI copy):** Branded “SpendWise” in `src/routes/__root.tsx` meta; repo folder may be `Penny_Pay`. Keep naming consistent when changing titles.
-- **MVP vs docs:** Full vision lives in `docs/` (`expense-tracker-documentation.md`, `system-design.md`, `api-design.md`, `db-design.md`, `open-questions.md`). The app is **local-first**: persistence via `src/lib/store.ts` + `localStorage`, not the REST API in `docs/api-design.md` until that layer exists.
+- **Stack:** Next.js 15 (App Router) + React 19 + Tailwind v4 (`@tailwindcss/postcss`). Local dev: `npm run dev` (default http://localhost:3000).
+- **Deploy target:** Vercel or any Node host that runs `next start`; static export not configured.
+- **Cursor MCP (repo):** `.cursor/mcp.json` registers [Vercel](https://vercel.com/docs/agent-resources/vercel-mcp) and [Supabase](https://supabase.com/docs/guides/getting-started/mcp) remote servers; finish OAuth under Settings → Tools & MCP after opening this project.
+- **Product (UI copy):** Branded “SpendWise” in `src/app/layout.tsx` metadata; repo folder may be `Penny_Pay`. Keep naming consistent when changing titles.
+- **MVP vs docs:** Full vision lives in `docs/` (`expense-tracker-documentation.md`, `system-design.md`, `api-design.md`, `db-design.md`, `open-questions.md`). The app persists to **Supabase** (`spend_snapshots` JSON row per anonymous user) with **localStorage** as offline/cache; it does not use the REST API in `docs/api-design.md` until that layer exists.
 - **When adding features:** Prefer matching the docs’ domain language (debited/credited, daily target day marks, budget periods). If backend arrives later, align field names with API design (`entryType` debit/credit maps to app `cash-out` / `cash-in`).

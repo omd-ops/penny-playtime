@@ -1,9 +1,8 @@
+"use client";
+
 import { useMemo } from "react";
+import { useExpenses, useCategories, useBudgetTargets, useSettings } from "@/lib/spend-store";
 import {
-  useExpenses,
-  useCategories,
-  useBudgetTargets,
-  useSettings,
   getExpensesForMonth,
   getExpensesForDate,
   sumDebits,
@@ -107,11 +106,11 @@ export function OverviewScreen() {
         )}
       </div>
 
-      {/* Daily target strip */}
+      {/* Today's spending vs daily budget cap */}
       {dailyTarget && dailyTarget.amount > 0 ? (
         <div className="mb-4 rounded-2xl bg-card p-4 shadow-sm border border-border/50">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Today</span>
+            <span className="text-sm font-medium text-foreground">Spending today</span>
             <StatusBadge status={getBudgetStatus(todayTotal, dailyTarget.amount)} />
           </div>
           <BudgetBar spent={todayTotal} limit={dailyTarget.amount} currency={settings.currency} />
@@ -122,7 +121,7 @@ export function OverviewScreen() {
             Today: <span className="font-semibold text-foreground">{formatCurrency(todayTotal, settings.currency)}</span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Set a daily target in Settings to track your progress here.
+            Set a daily spending cap in Settings or Notes to compare spending here.
           </p>
         </div>
       )}
