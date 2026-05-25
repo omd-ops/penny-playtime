@@ -11,24 +11,24 @@
 
 ### 1.1 Global rules
 
-| Rule | Detail |
-|------|--------|
-| Format | JSON; `Content-Type: application/json` |
-| Property names | **camelCase** |
-| IDs | **UUID** v4 in paths and bodies |
-| Dates | **ISO 8601** UTC: `2026-04-14T12:30:00.000Z` |
+| Rule             | Detail                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Format           | JSON; `Content-Type: application/json`                                                                                          |
+| Property names   | **camelCase**                                                                                                                   |
+| IDs              | **UUID** v4 in paths and bodies                                                                                                 |
+| Dates            | **ISO 8601** UTC: `2026-04-14T12:30:00.000Z`                                                                                    |
 | Currency amounts | Decimal strings in JSON (e.g. `"42.50"`) **or** integers in minor units—**pick one** per implementation and document in OpenAPI |
-| Auth | `Authorization: Bearer <access_token>` unless using cookie sessions |
-| Versioning | URL prefix `/api/v1/`; breaking changes → `/api/v2/` |
+| Auth             | `Authorization: Bearer <access_token>` unless using cookie sessions                                                             |
+| Versioning       | URL prefix `/api/v1/`; breaking changes → `/api/v2/`                                                                            |
 
 ### 1.2 Pagination (list endpoints)
 
 **Query parameters:**
 
-| Param | Type | Default | Notes |
-|-------|------|---------|--------|
-| `page` | integer | `1` | Min 1 |
-| `limit` | integer | `20` | Min 1, max 100 |
+| Param   | Type    | Default | Notes          |
+| ------- | ------- | ------- | -------------- |
+| `page`  | integer | `1`     | Min 1          |
+| `limit` | integer | `20`    | Min 1, max 100 |
 
 **Response wrapper:**
 
@@ -50,12 +50,12 @@
 
 ### 1.3 Filtering (expenses)
 
-| Param | Example | Semantics |
-|-------|---------|-----------|
-| `categoryId` | uuid | Exact match |
-| `from` | ISO date | `occurredAt >= from` (start of day UTC per product) |
-| `to` | ISO date | `occurredAt <= end of day` |
-| `search` | string | Optional: note substring |
+| Param        | Example  | Semantics                                           |
+| ------------ | -------- | --------------------------------------------------- |
+| `categoryId` | uuid     | Exact match                                         |
+| `from`       | ISO date | `occurredAt >= from` (start of day UTC per product) |
+| `to`         | ISO date | `occurredAt <= end of day`                          |
+| `search`     | string   | Optional: note substring                            |
 
 ### 1.4 Standard error response
 
@@ -64,9 +64,7 @@
   "error": {
     "code": "VALIDATION_FAILED",
     "message": "Request validation failed",
-    "details": [
-      { "field": "amount", "message": "Must be a positive number" }
-    ]
+    "details": [{ "field": "amount", "message": "Must be a positive number" }]
   }
 }
 ```
@@ -130,11 +128,11 @@ Returns the authenticated user.
 
 **Request body (all optional):**
 
-| Field | Type | Constraints |
-|-------|------|-------------|
-| displayName | string | 1–80 chars |
-| currency | string | ISO 4217 code |
-| timezone | string | IANA timezone |
+| Field       | Type   | Constraints   |
+| ----------- | ------ | ------------- |
+| displayName | string | 1–80 chars    |
+| currency    | string | ISO 4217 code |
+| timezone    | string | IANA timezone |
 
 **Response `200`:** updated user object.
 
@@ -163,11 +161,11 @@ List categories for the current user.
 
 **Request body:**
 
-| Field | Type | Required |
-|-------|------|----------|
-| name | string | yes, 1–64 chars |
-| color | string | no, hex or token |
-| iconKey | string | no |
+| Field   | Type   | Required         |
+| ------- | ------ | ---------------- |
+| name    | string | yes, 1–64 chars  |
+| color   | string | no, hex or token |
+| iconKey | string | no               |
 
 **Response `201`:** category object.
 
@@ -209,19 +207,19 @@ List categories for the current user.
 }
 ```
 
-*`entryType` defaults to `debit` (outflow). `credit` is for inflows (refunds/income) when enabled—see product and DB design.*
+_`entryType` defaults to `debit` (outflow). `credit` is for inflows (refunds/income) when enabled—see product and DB design._
 
 #### `POST /expenses`
 
 **Request body:**
 
-| Field | Type | Required | Constraints |
-|-------|------|----------|-------------|
-| categoryId | uuid | yes | Must belong to user |
-| amount | string (decimal) | yes | Must be positive |
-| note | string | no | max 500 |
-| occurredAt | ISO datetime | no | default now |
-| entryType | enum | no | `debit` (default) or `credit` — credits roll into **credited** totals on calendar |
+| Field      | Type             | Required | Constraints                                                                       |
+| ---------- | ---------------- | -------- | --------------------------------------------------------------------------------- |
+| categoryId | uuid             | yes      | Must belong to user                                                               |
+| amount     | string (decimal) | yes      | Must be positive                                                                  |
+| note       | string           | no       | max 500                                                                           |
+| occurredAt | ISO datetime     | no       | default now                                                                       |
+| entryType  | enum             | no       | `debit` (default) or `credit` — credits roll into **credited** totals on calendar |
 
 **Response `201`:** expense object.
 
@@ -265,12 +263,12 @@ Optional query: `period=daily|monthly|yearly` to filter.
 
 **Request body:**
 
-| Field | Type | Required |
-|-------|------|----------|
-| period | enum | yes: `daily`, `monthly`, `yearly` |
-| amount | string | yes |
-| effectiveFrom | date | no |
-| effectiveTo | date | no |
+| Field         | Type   | Required                          |
+| ------------- | ------ | --------------------------------- |
+| period        | enum   | yes: `daily`, `monthly`, `yearly` |
+| amount        | string | yes                               |
+| effectiveFrom | date   | no                                |
+| effectiveTo   | date   | no                                |
 
 **Response `201`:** budget target.
 
@@ -292,9 +290,9 @@ Returns per-day rollups for building the **month grid** (totals, activity flags,
 
 **Query parameters:**
 
-| Param | Type | Required |
-|-------|------|----------|
-| `year` | integer | yes |
+| Param   | Type    | Required  |
+| ------- | ------- | --------- |
+| `year`  | integer | yes       |
 | `month` | integer | yes, 1–12 |
 
 **Response `200`:**
@@ -316,7 +314,7 @@ Returns per-day rollups for building the **month grid** (totals, activity flags,
 }
 ```
 
-*`creditedTotal` is `"0.00"` until income/refund modeling exists; `targetCompleted` reflects the user’s checkbox for that date.*
+_`creditedTotal` is `"0.00"` until income/refund modeling exists; `targetCompleted` reflects the user’s checkbox for that date._
 
 #### `GET /days/:date`
 
@@ -383,11 +381,11 @@ Read-only aggregates for dashboards.
 
 **Query parameters:**
 
-| Param | Required | Values |
-|-------|----------|--------|
-| `granularity` | yes | `day`, `week`, `month`, `year` |
-| `anchor` | no | ISO date; default today |
-| `compare` | no | `true` — include previous period totals |
+| Param         | Required | Values                                  |
+| ------------- | -------- | --------------------------------------- |
+| `granularity` | yes      | `day`, `week`, `month`, `year`          |
+| `anchor`      | no       | ISO date; default today                 |
+| `compare`     | no       | `true` — include previous period totals |
 
 **Response `200`:**
 
@@ -398,9 +396,7 @@ Read-only aggregates for dashboards.
     "end": "2026-04-30T23:59:59.999Z"
   },
   "totalSpend": "1240.00",
-  "byCategory": [
-    { "categoryId": "uuid", "name": "Food", "amount": "520.00", "percent": 42 }
-  ],
+  "byCategory": [{ "categoryId": "uuid", "name": "Food", "amount": "520.00", "percent": 42 }],
   "previousPeriod": {
     "totalSpend": "1150.00",
     "deltaPercent": 7.8
@@ -411,7 +407,7 @@ Read-only aggregates for dashboards.
 }
 ```
 
-*`status` may be `ok`, `warning`, `over` per product rules.*
+_`status` may be `ok`, `warning`, `over` per product rules._
 
 ---
 
@@ -473,15 +469,15 @@ Creates an async job.
 
 **Request body:**
 
-| Field | Type | Required |
-|-------|------|----------|
-| reportType | `expense_detail` \| `target_vs_actual` | yes |
-| format | `xlsx` \| `pdf` | yes |
-| dateFrom | date | yes |
-| dateTo | date | yes |
-| includeTransactionTable | boolean | no, default true |
-| includeCharts | boolean | no, default true |
-| targetPeriods | string[] | no | e.g. `["daily","monthly"]` for target report |
+| Field                   | Type                                   | Required         |
+| ----------------------- | -------------------------------------- | ---------------- | -------------------------------------------- |
+| reportType              | `expense_detail` \| `target_vs_actual` | yes              |
+| format                  | `xlsx` \| `pdf`                        | yes              |
+| dateFrom                | date                                   | yes              |
+| dateTo                  | date                                   | yes              |
+| includeTransactionTable | boolean                                | no, default true |
+| includeCharts           | boolean                                | no, default true |
+| targetPeriods           | string[]                               | no               | e.g. `["daily","monthly"]` for target report |
 
 **Headers (optional):** `Idempotency-Key: <uuid>` to avoid duplicate jobs.
 
@@ -536,9 +532,7 @@ Server-mediated conversational step; implements tools against domain services.
 
 ```json
 {
-  "messages": [
-    { "role": "user", "content": "Spent 12 dollars on food" }
-  ],
+  "messages": [{ "role": "user", "content": "Spent 12 dollars on food" }],
   "confirmToolExecution": false
 }
 ```
@@ -570,55 +564,55 @@ When `confirmToolExecution` is `false`, tool calls return **drafts** only. When 
 
 ## 4. HTTP status codes (usage)
 
-| Code | When |
-|------|------|
-| 200 | OK for GET, PATCH, PUT |
-| 201 | Created |
-| 202 | Accepted (async job) |
-| 204 | No content (delete) |
-| 400 | Malformed JSON or validation |
-| 401 | Missing/invalid auth |
-| 403 | Forbidden (rare: blocked user) |
-| 404 | Resource not found |
-| 409 | Conflict (delete category with expenses) |
-| 422 | Business rule violation |
-| 429 | Rate limit |
-| 500 | Server error |
+| Code | When                                     |
+| ---- | ---------------------------------------- |
+| 200  | OK for GET, PATCH, PUT                   |
+| 201  | Created                                  |
+| 202  | Accepted (async job)                     |
+| 204  | No content (delete)                      |
+| 400  | Malformed JSON or validation             |
+| 401  | Missing/invalid auth                     |
+| 403  | Forbidden (rare: blocked user)           |
+| 404  | Resource not found                       |
+| 409  | Conflict (delete category with expenses) |
+| 422  | Business rule violation                  |
+| 429  | Rate limit                               |
+| 500  | Server error                             |
 
 ---
 
 ## 5. Error code registry
 
-| Code | HTTP | Description |
-|------|------|-------------|
-| `AUTH_TOKEN_INVALID` | 401 | Bearer invalid or expired |
-| `AUTH_REQUIRED` | 401 | No credentials |
-| `FORBIDDEN` | 403 | Operation not allowed |
-| `RESOURCE_NOT_FOUND` | 404 | Generic not found |
-| `EXPENSE_NOT_FOUND` | 404 | Expense id unknown |
-| `CATEGORY_NOT_FOUND` | 404 | Category id unknown |
-| `BUDGET_TARGET_NOT_FOUND` | 404 | Target id unknown |
-| `VALIDATION_FAILED` | 400 | Schema validation |
-| `INVALID_DATE_RANGE` | 422 | `from` after `to` |
-| `INVALID_CALENDAR_DATE` | 400 | `:date` not a valid `YYYY-MM-DD` |
-| `DUPLICATE_TARGET` | 409 | Overlapping target for same period |
-| `CATEGORY_IN_USE` | 409 | Cannot delete |
-| `REPORT_JOB_NOT_FOUND` | 404 | Job id |
-| `REPORT_NOT_READY` | 425 | Optional: Too Early while processing |
-| `REPORT_GENERATION_FAILED` | 500 | Worker failure (details internal) |
-| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
-| `INTERNAL_ERROR` | 500 | Unexpected |
+| Code                       | HTTP | Description                          |
+| -------------------------- | ---- | ------------------------------------ |
+| `AUTH_TOKEN_INVALID`       | 401  | Bearer invalid or expired            |
+| `AUTH_REQUIRED`            | 401  | No credentials                       |
+| `FORBIDDEN`                | 403  | Operation not allowed                |
+| `RESOURCE_NOT_FOUND`       | 404  | Generic not found                    |
+| `EXPENSE_NOT_FOUND`        | 404  | Expense id unknown                   |
+| `CATEGORY_NOT_FOUND`       | 404  | Category id unknown                  |
+| `BUDGET_TARGET_NOT_FOUND`  | 404  | Target id unknown                    |
+| `VALIDATION_FAILED`        | 400  | Schema validation                    |
+| `INVALID_DATE_RANGE`       | 422  | `from` after `to`                    |
+| `INVALID_CALENDAR_DATE`    | 400  | `:date` not a valid `YYYY-MM-DD`     |
+| `DUPLICATE_TARGET`         | 409  | Overlapping target for same period   |
+| `CATEGORY_IN_USE`          | 409  | Cannot delete                        |
+| `REPORT_JOB_NOT_FOUND`     | 404  | Job id                               |
+| `REPORT_NOT_READY`         | 425  | Optional: Too Early while processing |
+| `REPORT_GENERATION_FAILED` | 500  | Worker failure (details internal)    |
+| `RATE_LIMIT_EXCEEDED`      | 429  | Too many requests                    |
+| `INTERNAL_ERROR`           | 500  | Unexpected                           |
 
 ---
 
 ## 6. Rate limits (suggested)
 
-| Route group | Limit |
-|-------------|-------|
-| Default authenticated | 300 req/min per user |
-| `POST /auth/*` | 20 req/min per IP |
-| `POST /report-exports` | 10 req/min per user |
-| `POST /agent/turn` | 30 req/min per user |
+| Route group            | Limit                |
+| ---------------------- | -------------------- |
+| Default authenticated  | 300 req/min per user |
+| `POST /auth/*`         | 20 req/min per IP    |
+| `POST /report-exports` | 10 req/min per user  |
+| `POST /agent/turn`     | 30 req/min per user  |
 
 Return `429` with `Retry-After` header when applicable.
 
@@ -632,7 +626,7 @@ Maintain a single **OpenAPI 3.1** YAML in the repository generated from or synce
 
 ## 8. Changelog (API)
 
-| Date | Change |
-|------|--------|
-| 2026-04-14 | Initial `v1` draft |
+| Date       | Change                                                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-14 | Initial `v1` draft                                                                                                              |
 | 2026-04-14 | Added Calendar: `GET /calendar/month`, `GET /days/:date`, `PUT /days/:date/target-completion`; optional `entryType` on expenses |

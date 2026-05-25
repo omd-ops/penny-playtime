@@ -25,10 +25,10 @@ A lightweight, mobile-first web app that helps people record spending quickly, s
 
 ## 2. Target users
 
-| Segment | Needs |
-|--------|--------|
-| Individuals | Simple daily tracking, budget discipline, occasional insights |
-| Students / young professionals | Low friction, clear monthly caps, habit reminders |
+| Segment                           | Needs                                                              |
+| --------------------------------- | ------------------------------------------------------------------ |
+| Individuals                       | Simple daily tracking, budget discipline, occasional insights      |
+| Students / young professionals    | Low friction, clear monthly caps, habit reminders                  |
 | Small households (optional later) | Shared categories or export (out of scope for v1 unless specified) |
 
 ---
@@ -68,11 +68,11 @@ A lightweight, mobile-first web app that helps people record spending quickly, s
 
 ### 3.5 Notifications
 
-| Type | Purpose |
-|------|--------|
-| Reminder | Daily prompt to log expenses (user-chosen time) |
-| Threshold | Approaching or exceeding daily/monthly/yearly target |
-| Streak / summary | Optional weekly digest |
+| Type             | Purpose                                              |
+| ---------------- | ---------------------------------------------------- |
+| Reminder         | Daily prompt to log expenses (user-chosen time)      |
+| Threshold        | Approaching or exceeding daily/monthly/yearly target |
+| Streak / summary | Optional weekly digest                               |
 
 **Platform note:** On the web, notifications typically use **Web Push** (with user permission) or **in-app** notification center for browsers that block push. Document as a requirement: graceful fallback when permission denied.
 
@@ -87,10 +87,10 @@ A lightweight, mobile-first web app that helps people record spending quickly, s
 
 Users can generate and **download reports** in **Microsoft Excel** (`.xlsx`) or **PDF** (`.pdf`). Each report is suitable for archiving, sharing with an accountant, or offline review.
 
-| Report type | Contents (minimum) |
-|-------------|-------------------|
-| **Expense report** | **Tables:** line-item expenses (date, category, amount, note) for a user-selected range; optional subtotals by category and by day/week. **Visuals:** at least one chart (e.g. category pie or donut, or spend-over-time line/bar) matching the selected range. |
-| **Target / budget report** | **Tables:** daily (and/or monthly/yearly) **targets** vs **actual spend** per period row; variance column; optional list of days over daily target. **Visuals:** e.g. progress bars or a combo chart of target vs actual over time. |
+| Report type                | Contents (minimum)                                                                                                                                                                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Expense report**         | **Tables:** line-item expenses (date, category, amount, note) for a user-selected range; optional subtotals by category and by day/week. **Visuals:** at least one chart (e.g. category pie or donut, or spend-over-time line/bar) matching the selected range. |
+| **Target / budget report** | **Tables:** daily (and/or monthly/yearly) **targets** vs **actual spend** per period row; variance column; optional list of days over daily target. **Visuals:** e.g. progress bars or a combo chart of target vs actual over time.                             |
 
 **Shared behavior:**
 
@@ -105,12 +105,12 @@ Users can generate and **download reports** in **Microsoft Excel** (`.xlsx`) or 
 
 After core product maturity, add an **in-app agent** that users can **talk to** (voice in, voice out) so logging and common actions need fewer taps. The agent **interprets natural language**, holds a short dialog if something is ambiguous, and **writes structured values into the app** (forms, API) instead of the user typing.
 
-| Capability | Behavior |
-|------------|----------|
-| **Add expense** | User says e.g. “Coffee four fifty at Starbucks”—agent extracts amount, payee/category hint, proposes values on the **Add expense** form or submits after explicit “yes / save.” |
-| **Query** | “How much did I spend on food this week?”—agent reads totals from analytics APIs and answers verbally (and optionally scrolls/highlights UI). |
-| **Targets** | “Set my daily budget to eighty dollars”—agent fills **Targets** fields and asks for confirmation before persisting. |
-| **Reports (optional later)** | “Email me last month’s PDF”—agent triggers report generation if product supports delivery beyond download. |
+| Capability                   | Behavior                                                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Add expense**              | User says e.g. “Coffee four fifty at Starbucks”—agent extracts amount, payee/category hint, proposes values on the **Add expense** form or submits after explicit “yes / save.” |
+| **Query**                    | “How much did I spend on food this week?”—agent reads totals from analytics APIs and answers verbally (and optionally scrolls/highlights UI).                                   |
+| **Targets**                  | “Set my daily budget to eighty dollars”—agent fills **Targets** fields and asks for confirmation before persisting.                                                             |
+| **Reports (optional later)** | “Email me last month’s PDF”—agent triggers report generation if product supports delivery beyond download.                                                                      |
 
 **UX principles:**
 
@@ -125,15 +125,15 @@ After core product maturity, add an **in-app agent** that users can **talk to** 
 
 ## 4. Non-functional requirements
 
-| Area | Requirement |
-|------|----------------|
-| Layout | Mobile-first; touch targets ≥ 44px; readable typography on small screens |
-| Performance | First interactive screen fast on 3G; list virtualization for long history |
-| Accessibility | Semantic structure, labels for forms, sufficient contrast; calendar grid and day sheet keyboard-accessible |
-| Privacy | Clear data policy; local-only option if offline-first is chosen |
-| Notifications | Explicit opt-in; quiet hours; easy disable per notification type |
-| Reports | Generated files must match user-visible filters; filenames include date range; PDFs readable when printed grayscale |
-| Voice agent (post-MVP) | User consent for mic; clear indicator when listening; graceful degradation to text-only if voice unavailable |
+| Area                   | Requirement                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Layout                 | Mobile-first; touch targets ≥ 44px; readable typography on small screens                                            |
+| Performance            | First interactive screen fast on 3G; list virtualization for long history                                           |
+| Accessibility          | Semantic structure, labels for forms, sufficient contrast; calendar grid and day sheet keyboard-accessible          |
+| Privacy                | Clear data policy; local-only option if offline-first is chosen                                                     |
+| Notifications          | Explicit opt-in; quiet hours; easy disable per notification type                                                    |
+| Reports                | Generated files must match user-visible filters; filenames include date range; PDFs readable when printed grayscale |
+| Voice agent (post-MVP) | User consent for mic; clear indicator when listening; graceful degradation to text-only if voice unavailable        |
 
 ---
 
@@ -275,21 +275,21 @@ flowchart TD
 
 ## 7. Screen inventory (mobile-first)
 
-| Screen | Purpose |
-|--------|---------|
-| Splash / load | Brand, session restore |
-| Login / register | Access private data |
-| Home (today) | Balance vs target, quick add, recent items |
-| Calendar | Month grid; navigate months; tap day opens sheet |
-| Day detail sheet | Debited/credited totals, spends list, daily target, “target met” checkbox |
-| Add expense | Form + category picker |
-| Expense list | Scrollable history, filters |
-| Expense detail | Edit/delete single item |
-| Targets | CRUD for daily/monthly/yearly limits |
-| Analytics | Charts, breakdowns, comparisons |
-| Reports & export | Date range, report type, Excel vs PDF, optional preview before download |
-| Notifications | Toggle types, time, quiet hours |
-| Profile | Currency, locale, logout, account |
+| Screen                     | Purpose                                                                                  |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| Splash / load              | Brand, session restore                                                                   |
+| Login / register           | Access private data                                                                      |
+| Home (today)               | Balance vs target, quick add, recent items                                               |
+| Calendar                   | Month grid; navigate months; tap day opens sheet                                         |
+| Day detail sheet           | Debited/credited totals, spends list, daily target, “target met” checkbox                |
+| Add expense                | Form + category picker                                                                   |
+| Expense list               | Scrollable history, filters                                                              |
+| Expense detail             | Edit/delete single item                                                                  |
+| Targets                    | CRUD for daily/monthly/yearly limits                                                     |
+| Analytics                  | Charts, breakdowns, comparisons                                                          |
+| Reports & export           | Date range, report type, Excel vs PDF, optional preview before download                  |
+| Notifications              | Toggle types, time, quiet hours                                                          |
+| Profile                    | Currency, locale, logout, account                                                        |
 | Voice assistant (post-MVP) | Mic control, transcript, agent reply, preview card before save; links into Add / Targets |
 
 ---
@@ -535,7 +535,7 @@ flowchart LR
   VoiceOverlay --> AddModal
 ```
 
-*(Post-MVP: floating “assistant” entry from Home opens overlay; confirmed actions route to same screens/API as manual entry.)*
+_(Post-MVP: floating “assistant” entry from Home opens overlay; confirmed actions route to same screens/API as manual entry.)_
 
 ---
 
@@ -549,7 +549,7 @@ flowchart LR
 - **BudgetTarget** — id, userId, period (`daily` | `monthly` | `yearly`), amount, optional category scope, effective dates.
 - **Calendar day mark** — userId, **calendar date** (date-only), **targetCompleted** (boolean): user checkbox for “met daily target that day.” At most one row per user per date.
 
-Relationships: User 1—* Expense; User 1—* Category; User 1—* BudgetTarget; User 1—* CalendarDayMark (by date).
+Relationships: User 1—_ Expense; User 1—_ Category; User 1—_ BudgetTarget; User 1—_ CalendarDayMark (by date).
 
 **Post-MVP (optional):** **Agent audit log** — userId, timestamp, tool name (`createExpense`, …), structured args, resulting entity id; **no raw audio** unless user explicitly opts in for support.
 
@@ -557,12 +557,12 @@ Relationships: User 1—* Expense; User 1—* Category; User 1—* BudgetTarget;
 
 ## 11. Notification matrix (implementation checklist)
 
-| Event | Channel | User control |
-|-------|---------|--------------|
-| Daily reminder | Push / email fallback | Time + on/off |
-| Near limit | Push + optional in-app banner | Threshold % + on/off |
-| Over limit | Push | On/off |
-| Weekly digest | Push / email | Day + on/off |
+| Event          | Channel                       | User control         |
+| -------------- | ----------------------------- | -------------------- |
+| Daily reminder | Push / email fallback         | Time + on/off        |
+| Near limit     | Push + optional in-app banner | Threshold % + on/off |
+| Over limit     | Push                          | On/off               |
+| Weekly digest  | Push / email                  | Day + on/off         |
 
 **Edge cases:** Multiple targets (daily + monthly) can fire separate alerts; deduplicate or batch within a short window to avoid spam.
 
@@ -574,99 +574,99 @@ The tables below describe one **coherent default** for a **TypeScript-first**, *
 
 ### 12.1 Client (web application)
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Language | **TypeScript** | Shared types/schemas with API |
-| App shell | **React 18+** with **Vite** (SPA) **or** **Next.js** 14+ (App Router) | Next.js: built-in API routes, SSR/ISR; Vite: fast dev, pair with separate Node API |
-| Styling | **Tailwind CSS** | Mobile-first breakpoints; optional **Radix UI** / **Headless UI** for accessible primitives |
-| Server state | **TanStack Query** | Caching, retries, background refresh for API data |
-| Client state | **Zustand** or minimal **React context** | Prefer TanStack Query for server data; local UI only in Zustand |
-| Forms | **React Hook Form** + **Zod** | Same Zod schemas as API validation when possible |
-| Charts | **Recharts** or **Visx** | Respect `prefers-reduced-motion`; accessible labels |
-| Calendar UI | **React Day Picker**, **FullCalendar** (subset), or headless grid | Month view + a11y; match user timezone |
-| PWA | **vite-plugin-pwa** or **@ducanh2912/next-pwa** | Manifest, service worker, offline shell (optional offline data later) |
-| i18n / currency | **FormatJS** / **i18next** | Align with user locale for money and dates |
+| Area            | Suggested choice                                                      | Notes                                                                                       |
+| --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Language        | **TypeScript**                                                        | Shared types/schemas with API                                                               |
+| App shell       | **React 18+** with **Vite** (SPA) **or** **Next.js** 14+ (App Router) | Next.js: built-in API routes, SSR/ISR; Vite: fast dev, pair with separate Node API          |
+| Styling         | **Tailwind CSS**                                                      | Mobile-first breakpoints; optional **Radix UI** / **Headless UI** for accessible primitives |
+| Server state    | **TanStack Query**                                                    | Caching, retries, background refresh for API data                                           |
+| Client state    | **Zustand** or minimal **React context**                              | Prefer TanStack Query for server data; local UI only in Zustand                             |
+| Forms           | **React Hook Form** + **Zod**                                         | Same Zod schemas as API validation when possible                                            |
+| Charts          | **Recharts** or **Visx**                                              | Respect `prefers-reduced-motion`; accessible labels                                         |
+| Calendar UI     | **React Day Picker**, **FullCalendar** (subset), or headless grid     | Month view + a11y; match user timezone                                                      |
+| PWA             | **vite-plugin-pwa** or **@ducanh2912/next-pwa**                       | Manifest, service worker, offline shell (optional offline data later)                       |
+| i18n / currency | **FormatJS** / **i18next**                                            | Align with user locale for money and dates                                                  |
 
 ### 12.2 API & backend services
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Runtime | **Node.js 20 LTS** | Broad library support for PDF/XLSX jobs |
-| HTTP API | **NestJS** **or** **Hono** / **Express** + **Zod** validation | REST + OpenAPI **or** **tRPC** if monorepo end-to-end TS |
-| Background jobs | **BullMQ** + **Redis** | Scheduled reminders, digest emails, **async PDF/Excel** for large reports |
-| Real-time (optional) | **WebSocket** or **SSE** | Progress for long exports; **post-MVP** streaming agent tokens |
+| Area                 | Suggested choice                                              | Notes                                                                     |
+| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Runtime              | **Node.js 20 LTS**                                            | Broad library support for PDF/XLSX jobs                                   |
+| HTTP API             | **NestJS** **or** **Hono** / **Express** + **Zod** validation | REST + OpenAPI **or** **tRPC** if monorepo end-to-end TS                  |
+| Background jobs      | **BullMQ** + **Redis**                                        | Scheduled reminders, digest emails, **async PDF/Excel** for large reports |
+| Real-time (optional) | **WebSocket** or **SSE**                                      | Progress for long exports; **post-MVP** streaming agent tokens            |
 
 ### 12.3 Data & storage
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Primary DB | **PostgreSQL** 15+ | Relational model fits users, expenses, categories, targets |
-| ORM | **Prisma** **or** **Drizzle** | Migrations; type-safe queries |
-| Cache / queue broker | **Redis** | BullMQ, rate limiting, session cache |
-| Files (optional) | **S3-compatible** (R2, S3, MinIO) | Temporary report blobs if not streamed directly |
+| Area                 | Suggested choice                  | Notes                                                      |
+| -------------------- | --------------------------------- | ---------------------------------------------------------- |
+| Primary DB           | **PostgreSQL** 15+                | Relational model fits users, expenses, categories, targets |
+| ORM                  | **Prisma** **or** **Drizzle**     | Migrations; type-safe queries                              |
+| Cache / queue broker | **Redis**                         | BullMQ, rate limiting, session cache                       |
+| Files (optional)     | **S3-compatible** (R2, S3, MinIO) | Temporary report blobs if not streamed directly            |
 
 ### 12.4 Authentication & security
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Auth platform | **Clerk**, **Auth.js** (NextAuth), **Supabase Auth**, or **Auth0** | OAuth + email; session or JWT |
-| API security | HTTPS only; **CORS** locked to app origin; **CSRF** for cookie sessions | Rate limiting on auth and agent endpoints |
-| Secrets | **Vault** / cloud secret manager | No keys in client for LLM if server-mediated |
+| Area          | Suggested choice                                                        | Notes                                        |
+| ------------- | ----------------------------------------------------------------------- | -------------------------------------------- |
+| Auth platform | **Clerk**, **Auth.js** (NextAuth), **Supabase Auth**, or **Auth0**      | OAuth + email; session or JWT                |
+| API security  | HTTPS only; **CORS** locked to app origin; **CSRF** for cookie sessions | Rate limiting on auth and agent endpoints    |
+| Secrets       | **Vault** / cloud secret manager                                        | No keys in client for LLM if server-mediated |
 
 ### 12.5 Notifications (web push)
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Protocol | **Web Push** (VAPID) | Service worker subscription stored per user in DB |
-| Delivery | Backend sends via **web-push** library or provider | Fallback: in-app feed if permission denied |
+| Area     | Suggested choice                                   | Notes                                             |
+| -------- | -------------------------------------------------- | ------------------------------------------------- |
+| Protocol | **Web Push** (VAPID)                               | Service worker subscription stored per user in DB |
+| Delivery | Backend sends via **web-push** library or provider | Fallback: in-app feed if permission denied        |
 
 ### 12.6 Reports (Excel & PDF)
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Excel | **ExcelJS** or **SheetJS** (tradeoffs for chart embedding) | Multi-sheet: Transactions, Summary; embed charts where library supports |
-| PDF | **Playwright** / **Puppeteer** (HTML → PDF) **or** **pdf-lib** + chart raster | Charts as SVG/PNG embedded for consistent print |
+| Area  | Suggested choice                                                              | Notes                                                                   |
+| ----- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Excel | **ExcelJS** or **SheetJS** (tradeoffs for chart embedding)                    | Multi-sheet: Transactions, Summary; embed charts where library supports |
+| PDF   | **Playwright** / **Puppeteer** (HTML → PDF) **or** **pdf-lib** + chart raster | Charts as SVG/PNG embedded for consistent print                         |
 
 ### 12.7 Hosting & operations
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Frontend | **Vercel**, **Netlify**, **Cloudflare Pages** | Edge CDN, easy previews |
-| API + workers | **Railway**, **Fly.io**, **Render**, or **AWS ECS/Fargate** | Long-running job workers for queues |
-| Managed Postgres | **Neon**, **Supabase**, **Railway**, **RDS** | Backups, connection pooling (PgBouncer) |
-| Observability | **Sentry**, **OpenTelemetry** | Errors + latency on API and agent calls |
+| Area             | Suggested choice                                            | Notes                                   |
+| ---------------- | ----------------------------------------------------------- | --------------------------------------- |
+| Frontend         | **Vercel**, **Netlify**, **Cloudflare Pages**               | Edge CDN, easy previews                 |
+| API + workers    | **Railway**, **Fly.io**, **Render**, or **AWS ECS/Fargate** | Long-running job workers for queues     |
+| Managed Postgres | **Neon**, **Supabase**, **Railway**, **RDS**                | Backups, connection pooling (PgBouncer) |
+| Observability    | **Sentry**, **OpenTelemetry**                               | Errors + latency on API and agent calls |
 
 ### 12.8 Post-MVP: voice agent & automation
 
 Keep **the same domain API** the UI uses; the agent calls it via **tool/function** definitions so values stay consistent and auditable.
 
-| Layer | Suggested choice | Notes |
-|-------|------------------|--------|
-| Speech-to-text | **OpenAI Whisper API**, **Google Cloud Speech-to-Text**, **Deepgram**, or **browser Web Speech API** | Web API alone is uneven across browsers—plan cloud STT for production |
-| Reasoning + structured actions | **OpenAI** (GPT-4.x / **Responses** with tools), **Google Gemini** (tools), or **Anthropic Claude** (tools) | Map tools: `createExpense`, `updateTarget`, `getSummary`, etc. |
-| Text-to-speech | **OpenAI TTS**, **Google Cloud TTS**, **Amazon Polly**, or **ElevenLabs** | Optional; **speechSynthesis** for low-friction MVP of voice UX |
-| Unified voice (optional) | **OpenAI Realtime API** (or similar) | Single session for speech in/out; still validate tools server-side |
-| Client UX | Push-to-talk button, waveform, **live transcript**, **preview card** before commit | Mic permission; show “listening” state clearly |
+| Layer                          | Suggested choice                                                                                            | Notes                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Speech-to-text                 | **OpenAI Whisper API**, **Google Cloud Speech-to-Text**, **Deepgram**, or **browser Web Speech API**        | Web API alone is uneven across browsers—plan cloud STT for production |
+| Reasoning + structured actions | **OpenAI** (GPT-4.x / **Responses** with tools), **Google Gemini** (tools), or **Anthropic Claude** (tools) | Map tools: `createExpense`, `updateTarget`, `getSummary`, etc.        |
+| Text-to-speech                 | **OpenAI TTS**, **Google Cloud TTS**, **Amazon Polly**, or **ElevenLabs**                                   | Optional; **speechSynthesis** for low-friction MVP of voice UX        |
+| Unified voice (optional)       | **OpenAI Realtime API** (or similar)                                                                        | Single session for speech in/out; still validate tools server-side    |
+| Client UX                      | Push-to-talk button, waveform, **live transcript**, **preview card** before commit                          | Mic permission; show “listening” state clearly                        |
 
 **Integration pattern:** Browser sends audio or text to **your backend**; backend calls STT/LLM with **user-scoped** tools that hit PostgreSQL via the same service layer as REST. **Never** expose raw provider API keys in the client.
 
 ### 12.9 Monorepo & shared contracts (optional)
 
-| Area | Suggested choice | Notes |
-|------|------------------|--------|
-| Monorepo | **Turborepo** or **Nx** | Single repo for `web` + `api` + shared packages |
-| Shared package | **`packages/shared`** | Zod schemas, DTO types, OpenAPI client (generated or **tRPC** router); keeps agent tools and REST handlers aligned |
+| Area           | Suggested choice        | Notes                                                                                                              |
+| -------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Monorepo       | **Turborepo** or **Nx** | Single repo for `web` + `api` + shared packages                                                                    |
+| Shared package | **`packages/shared`**   | Zod schemas, DTO types, OpenAPI client (generated or **tRPC** router); keeps agent tools and REST handlers aligned |
 
 ---
 
 ## 13. Milestones (example)
 
-| Phase | Deliverables |
-|-------|----------------|
-| MVP | Auth, add/list expenses, categories, monthly target, basic analytics |
-| v1.1 | Daily/yearly targets, push notifications, quiet hours, **Calendar tab** with month grid, **day detail sheet** (debited/credited totals, spends, daily target, **target-met checkbox**) |
-| v1.2 | Period compare, CSV backup, improved insights |
-| v1.3 | **Reports:** download **Excel** and **PDF** with **transaction tables**, **target vs actual tables**, and **embedded charts** (expense + target reports per §3.7) |
+| Phase    | Deliverables                                                                                                                                                                                       |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MVP      | Auth, add/list expenses, categories, monthly target, basic analytics                                                                                                                               |
+| v1.1     | Daily/yearly targets, push notifications, quiet hours, **Calendar tab** with month grid, **day detail sheet** (debited/credited totals, spends, daily target, **target-met checkbox**)             |
+| v1.2     | Period compare, CSV backup, improved insights                                                                                                                                                      |
+| v1.3     | **Reports:** download **Excel** and **PDF** with **transaction tables**, **target vs actual tables**, and **embedded charts** (expense + target reports per §3.7)                                  |
 | Post-MVP | **Voice assistant / conversational agent:** STT + LLM with tools + TTS (or Realtime API); **auto-fill** expenses, targets, and **query** analytics with **confirmation** before save (§3.8, §12.8) |
 
 ---
@@ -679,16 +679,16 @@ Unresolved questions and decision candidates are maintained in **[open-questions
 
 ## Document map
 
-| Section | Content |
-|---------|---------|
-| §1–4 | Vision, users, features (incl. Calendar §3.4, Excel/PDF §3.7, voice §3.8), NFRs |
-| §5–7 | IA, flows (incl. calendar day sheet, report download, voice post-MVP), screens |
-| §8 | ASCII wireframes (incl. Calendar, day sheet, Reports, Voice) |
-| §9–11 | Nav diagram, data model sketch, notifications |
-| §12–14 | **Recommended tech stack** (§12), roadmap; open items → [open-questions.md](./open-questions.md) |
-| §15 | Google Stitch UI generation prompts |
-| — | [db-design.md](./db-design.md) — physical schema, indexes, migrations, **free-tier** DB hosting |
-| — | [open-questions.md](./open-questions.md) — **open items & decision log** |
+| Section | Content                                                                                          |
+| ------- | ------------------------------------------------------------------------------------------------ |
+| §1–4    | Vision, users, features (incl. Calendar §3.4, Excel/PDF §3.7, voice §3.8), NFRs                  |
+| §5–7    | IA, flows (incl. calendar day sheet, report download, voice post-MVP), screens                   |
+| §8      | ASCII wireframes (incl. Calendar, day sheet, Reports, Voice)                                     |
+| §9–11   | Nav diagram, data model sketch, notifications                                                    |
+| §12–14  | **Recommended tech stack** (§12), roadmap; open items → [open-questions.md](./open-questions.md) |
+| §15     | Google Stitch UI generation prompts                                                              |
+| —       | [db-design.md](./db-design.md) — physical schema, indexes, migrations, **free-tier** DB hosting  |
+| —       | [open-questions.md](./open-questions.md) — **open items & decision log**                         |
 
 **Architecture & API:** see [system-design.md](./system-design.md) (components, data flows, scaling), [api-design.md](./api-design.md) (REST `v1` contracts, errors, pagination), [db-design.md](./db-design.md) (PostgreSQL schema, indexes, free-tier sizing), and [open-questions.md](./open-questions.md) (tracked decisions and open items).
 
@@ -743,17 +743,17 @@ Deliverable:
 
 Use these one at a time to refine Stitch output.
 
-| Goal | Prompt |
-|------|--------|
-| Dark mode | `Apply the same design system in dark mode: elevated surfaces, readable chart colors on dark background, no pure black—use dark gray surfaces.` |
-| Over-budget state | `On the Home screen, show a variant where the user is over the daily budget: prominent warning banner, progress bar past 100%, still accessible Add expense button.` |
-| Empty state | `Home screen empty state: no expenses yet—illustration or icon, short copy, one primary button to add first expense.` |
-| Analytics detail | `Analytics screen: add a “vs last period” comparison line under the total, and a horizontal bar chart for top 5 categories.` |
-| Accessibility | `Increase default font sizes slightly, ensure all interactive elements have visible focus states, and chart patterns are not color-only (labels or icons).` |
-| Desktop | `Provide a responsive widening for tablet/desktop: keep bottom nav or move to a left sidebar; content max-width with more chart width.` |
-| Reports screen | `Design “Reports & export”: report type (expense detail vs target vs actual), date range pickers, toggles for including transaction table and charts, dropdown for Excel vs PDF, secondary Preview and primary Download button; show a small mock of what tables/charts represent (not real data).` |
-| Voice assistant (post-MVP) | `Bottom sheet or modal “Voice assistant” over Home: user transcript and agent reply text, preview row for parsed expense ($, category, date), primary Confirm and secondary Edit, microphone affordance and optional audio waveform; calm fintech styling matching the rest of the app.` |
-| Calendar + day sheet | `Calendar tab: clean month grid with weekday headers, prev/next month, subtle indicator on days with spending; tap opens animated bottom sheet with debited/credited rows, mini spend list, daily target progress, checkbox “I met my daily target,” drag handle, and Close.` |
+| Goal                       | Prompt                                                                                                                                                                                                                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dark mode                  | `Apply the same design system in dark mode: elevated surfaces, readable chart colors on dark background, no pure black—use dark gray surfaces.`                                                                                                                                                     |
+| Over-budget state          | `On the Home screen, show a variant where the user is over the daily budget: prominent warning banner, progress bar past 100%, still accessible Add expense button.`                                                                                                                                |
+| Empty state                | `Home screen empty state: no expenses yet—illustration or icon, short copy, one primary button to add first expense.`                                                                                                                                                                               |
+| Analytics detail           | `Analytics screen: add a “vs last period” comparison line under the total, and a horizontal bar chart for top 5 categories.`                                                                                                                                                                        |
+| Accessibility              | `Increase default font sizes slightly, ensure all interactive elements have visible focus states, and chart patterns are not color-only (labels or icons).`                                                                                                                                         |
+| Desktop                    | `Provide a responsive widening for tablet/desktop: keep bottom nav or move to a left sidebar; content max-width with more chart width.`                                                                                                                                                             |
+| Reports screen             | `Design “Reports & export”: report type (expense detail vs target vs actual), date range pickers, toggles for including transaction table and charts, dropdown for Excel vs PDF, secondary Preview and primary Download button; show a small mock of what tables/charts represent (not real data).` |
+| Voice assistant (post-MVP) | `Bottom sheet or modal “Voice assistant” over Home: user transcript and agent reply text, preview row for parsed expense ($, category, date), primary Confirm and secondary Edit, microphone affordance and optional audio waveform; calm fintech styling matching the rest of the app.`            |
+| Calendar + day sheet       | `Calendar tab: clean month grid with weekday headers, prev/next month, subtle indicator on days with spending; tap opens animated bottom sheet with debited/credited rows, mini spend list, daily target progress, checkbox “I met my daily target,” drag handle, and Close.`                       |
 
 ---
 
