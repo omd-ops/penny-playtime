@@ -22,7 +22,10 @@ import { cn } from "@/lib/utils";
 function legacyItemsFromNotes(notes: string | undefined): ImportantNoteItem[] {
   const raw = notes?.trim();
   if (!raw) return [];
-  return raw.split(/\n+/).filter(Boolean).map((text, idx) => ({ id: `legacy-${idx}`, text }));
+  return raw
+    .split(/\n+/)
+    .filter(Boolean)
+    .map((text, idx) => ({ id: `legacy-${idx}`, text }));
 }
 
 function notesPlainText(items: ImportantNoteItem[]): string {
@@ -159,7 +162,9 @@ export function NotesScreen() {
       };
       return [...filtered, row];
     });
-    toast.success(`${SPENDING_PERIODS.find((p) => p.id === periodTab)?.label ?? "Budget"} spending cap saved`);
+    toast.success(
+      `${SPENDING_PERIODS.find((p) => p.id === periodTab)?.label ?? "Budget"} spending cap saved`,
+    );
   }
 
   function clearTarget() {
@@ -180,11 +185,14 @@ export function NotesScreen() {
       <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">Notes</h1>
       <p className="text-sm text-muted-foreground mb-5">
         Set <strong className="font-medium text-foreground">spending caps</strong> and your{" "}
-        <strong className="font-medium text-foreground">habits / TODO plans</strong> by period. The calendar still has a
-        per-day checkbox for when you actually finished the habits you planned for that day.
+        <strong className="font-medium text-foreground">habits / TODO plans</strong> by period. The
+        calendar still has a per-day checkbox for when you actually finished the habits you planned
+        for that day.
       </p>
 
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Spending caps</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+        Spending caps
+      </p>
       <div className="mb-3 flex gap-1.5 rounded-xl border border-border/50 bg-card p-1.5">
         {SPENDING_PERIODS.map((p) => (
           <button
@@ -218,7 +226,10 @@ export function NotesScreen() {
             </span>
           </p>
         )}
-        <label className="mt-3 block text-sm font-medium text-foreground" htmlFor="notes-target-amount">
+        <label
+          className="mt-3 block text-sm font-medium text-foreground"
+          htmlFor="notes-target-amount"
+        >
           Amount ({settings.currency})
         </label>
         <Input
@@ -231,7 +242,11 @@ export function NotesScreen() {
           className="mt-1 h-12 text-lg"
         />
         <div className="mt-3 flex gap-2">
-          <Button type="button" onClick={saveTarget} className="h-11 min-h-[44px] flex-1 rounded-xl">
+          <Button
+            type="button"
+            onClick={saveTarget}
+            className="h-11 min-h-[44px] flex-1 rounded-xl"
+          >
             Save target
           </Button>
           {activeTarget ? (
@@ -247,7 +262,9 @@ export function NotesScreen() {
         </div>
       </section>
 
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 mt-1">Habits and TODOs</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 mt-1">
+        Habits and TODOs
+      </p>
       <div className="mb-3 flex gap-1 rounded-xl border border-border/50 bg-card p-1.5">
         {HABIT_PERIODS.map((p) => (
           <button
@@ -303,7 +320,10 @@ export function NotesScreen() {
               <ul className="mt-3 space-y-2" aria-label="Daily habit checklist">
                 {dailyHabits.map((row, index) => (
                   <li key={row.id} className="flex items-center gap-2">
-                    <span className="text-muted-foreground select-none w-5 text-center shrink-0" aria-hidden>
+                    <span
+                      className="text-muted-foreground select-none w-5 text-center shrink-0"
+                      aria-hidden
+                    >
                       •
                     </span>
                     <Input
@@ -331,7 +351,10 @@ export function NotesScreen() {
           </>
         ) : (
           <>
-            <label className="mt-3 block text-sm font-medium text-foreground" htmlFor="habit-plan-text">
+            <label
+              className="mt-3 block text-sm font-medium text-foreground"
+              htmlFor="habit-plan-text"
+            >
               Notes
             </label>
             <Textarea
@@ -385,7 +408,10 @@ export function NotesScreen() {
           <ul className="space-y-2" aria-label="Important notes list">
             {importantNotes.map((note, index) => (
               <li key={note.id} className="flex items-center gap-2">
-                <span className="text-muted-foreground select-none w-5 text-center shrink-0" aria-hidden>
+                <span
+                  className="text-muted-foreground select-none w-5 text-center shrink-0"
+                  aria-hidden
+                >
                   •
                 </span>
                 <Input

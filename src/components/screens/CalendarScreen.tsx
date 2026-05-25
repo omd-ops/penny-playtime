@@ -19,6 +19,7 @@ import {
   getBudgetStatus,
   todayStr,
   generateId,
+  type DayGoal,
 } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +79,17 @@ export function CalendarScreen() {
     return cells;
   }, [viewYear, viewMonth]);
 
+  const flagMap = useMemo(() => new Map(dayFlags.map((f) => [f.date, f])), [dayFlags]);
+  const goalsMap = useMemo(() => {
+    const m = new Map<string, DayGoal[]>();
+    for (const g of dayGoals) {
+      const list = m.get(g.date);
+      if (list) list.push(g);
+      else m.set(g.date, [g]);
+    }
+    return m;
+  }, [dayGoals]);
+
   // Day totals for the month
   const dayRollups = useMemo(() => {
     const map = new Map<string, { debit: number; credit: number }>();
@@ -93,20 +105,25 @@ export function CalendarScreen() {
   }, [expenses, viewYear, viewMonth]);
 
   function prevMonth() {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else setViewMonth((m) => m - 1);
   }
   function nextMonth() {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else setViewMonth((m) => m + 1);
   }
 
-  const monthLabel = new Date(viewYear, viewMonth).toLocaleString("default", { month: "long", year: "numeric" });
+  const monthLabel = new Date(viewYear, viewMonth).toLocaleString("default", {
+    month: "long",
+    year: "numeric",
+  });
 
   const dailyHabitLines = useMemo(() => {
-    const fromItems = (settings.dailyHabitItems ?? [])
-      .map((i) => i.text.trim())
-      .filter(Boolean);
+    const fromItems = (settings.dailyHabitItems ?? []).map((i) => i.text.trim()).filter(Boolean);
     if (fromItems.length) return fromItems;
     const raw = (settings.habitPlans as { daily?: string } | undefined)?.daily?.trim();
     if (!raw) return [];
@@ -195,16 +212,24 @@ export function CalendarScreen() {
 
   const goalsForSelected = selectedDate ? dayGoals.filter((g) => g.date === selectedDate) : [];
 
-  const getCat = (id: string) => categories.find((c) => c.id === id);
+  const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   return (
     <div className="mx-auto max-w-lg px-4 pt-6">
       <header className="mb-4 flex items-center justify-between">
-        <button onClick={prevMonth} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Previous month">
+        <button
+          onClick={prevMonth}
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted"
+          aria-label="Previous month"
+        >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <h1 className="text-lg font-bold text-foreground">{monthLabel}</h1>
-        <button onClick={nextMonth} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Next month">
+        <button
+          onClick={nextMonth}
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted"
+          aria-label="Next month"
+        >
           <ChevronRight className="h-5 w-5" />
         </button>
       </header>
@@ -212,7 +237,9 @@ export function CalendarScreen() {
       {/* Weekday headers */}
       <div className="grid grid-cols-7 mb-1">
         {WEEKDAYS.map((wd) => (
-          <div key={wd} className="text-center text-xs font-medium text-muted-foreground py-2">{wd}</div>
+          <div key={wd} className="text-center text-xs font-medium text-muted-foreground py-2">
+            {wd}
+          </div>
         ))}
       </div>
 
@@ -227,8 +254,8 @@ export function CalendarScreen() {
           const hasIn = credited > 0;
           const showAmounts = hasOut || hasIn;
           const isToday = cell.dateStr === today;
-          const flag = dayFlags.find((f) => f.date === cell.dateStr);
-          const goalsForDay = dayGoals.filter((g) => g.date === cell.dateStr);
+          const flag = flagMap.get(cell.dateStr);
+          const goalsForDay = goalsMap.get(cell.dateStr) ?? [];
           const anyCustomGoalDone = goalsForDay.some((g) => g.done);
 
           const hasHabitLines = dailyHabitLines.length > 0;
@@ -289,18 +316,26 @@ export function CalendarScreen() {
                   aria-hidden
                 >
                   {dailyHabitLines.slice(0, 5).map((text, idx) => (
-                    <li key={idx} className="flex min-h-0 gap-0.5 text-[9px] leading-tight text-muted-foreground">
+                    <li
+                      key={idx}
+                      className="flex min-h-0 gap-0.5 text-[9px] leading-tight text-muted-foreground"
+                    >
                       <span className="shrink-0 text-primary/90">•</span>
                       <span className="min-w-0 truncate">{text}</span>
                     </li>
                   ))}
                   {dailyHabitLines.length > 5 && (
-                    <li className="pl-2 text-[9px] text-muted-foreground">+{dailyHabitLines.length - 5} more</li>
+                    <li className="pl-2 text-[9px] text-muted-foreground">
+                      +{dailyHabitLines.length - 5} more
+                    </li>
                   )}
                 </ul>
               )}
               {(flag?.metTarget || anyCustomGoalDone) && (
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-status-safe" aria-hidden />
+                <span
+                  className="absolute right-1 top-1 h-2 w-2 rounded-full bg-status-safe"
+                  aria-hidden
+                />
               )}
             </button>
           );
@@ -308,11 +343,22 @@ export function CalendarScreen() {
       </div>
 
       {/* Day detail sheet */}
-      <Sheet open={!!selectedDate} onOpenChange={(open) => { if (!open) setSelectedDate(null); }}>
+      <Sheet
+        open={!!selectedDate}
+        onOpenChange={(open) => {
+          if (!open) setSelectedDate(null);
+        }}
+      >
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>
-              {selectedDate && new Date(selectedDate + "T12:00:00").toLocaleDateString("default", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+              {selectedDate &&
+                new Date(selectedDate + "T12:00:00").toLocaleDateString("default", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
             </SheetTitle>
             <SheetDescription>Money in/out, spending budget, and daily habits</SheetDescription>
           </SheetHeader>
@@ -322,11 +368,15 @@ export function CalendarScreen() {
             <div className="flex items-center justify-between rounded-xl bg-surface p-3">
               <div>
                 <p className="text-xs text-muted-foreground">Debited</p>
-                <p className="text-lg font-bold text-foreground">{formatCurrency(selDebited, settings.currency)}</p>
+                <p className="text-lg font-bold text-foreground">
+                  {formatCurrency(selDebited, settings.currency)}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Credited</p>
-                <p className="text-lg font-bold text-foreground">{formatCurrency(selCredited, settings.currency)}</p>
+                <p className="text-lg font-bold text-foreground">
+                  {formatCurrency(selCredited, settings.currency)}
+                </p>
               </div>
             </div>
 
@@ -334,10 +384,16 @@ export function CalendarScreen() {
             {dailyTarget && dailyTarget.amount > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">Spending budget (this day)</span>
+                  <span className="text-sm font-medium text-foreground">
+                    Spending budget (this day)
+                  </span>
                   <StatusBadge status={getBudgetStatus(selDebited, dailyTarget.amount)} />
                 </div>
-                <BudgetBar spent={selDebited} limit={dailyTarget.amount} currency={settings.currency} />
+                <BudgetBar
+                  spent={selDebited}
+                  limit={dailyTarget.amount}
+                  currency={settings.currency}
+                />
               </div>
             )}
 
@@ -353,7 +409,9 @@ export function CalendarScreen() {
                 <div
                   className={cn(
                     "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
-                    selFlag?.metTarget ? "bg-status-safe border-status-safe" : "border-muted-foreground",
+                    selFlag?.metTarget
+                      ? "bg-status-safe border-status-safe"
+                      : "border-muted-foreground",
                   )}
                 >
                   {selFlag?.metTarget && <Check className="h-4 w-4 text-status-safe-foreground" />}
@@ -398,7 +456,9 @@ export function CalendarScreen() {
                       <div
                         className={cn(
                           "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
-                          goal.done ? "bg-status-safe border-status-safe" : "border-muted-foreground",
+                          goal.done
+                            ? "bg-status-safe border-status-safe"
+                            : "border-muted-foreground",
                         )}
                       >
                         {goal.done && <Check className="h-4 w-4 text-status-safe-foreground" />}
@@ -434,13 +494,20 @@ export function CalendarScreen() {
             ) : (
               <div className="space-y-2">
                 {selExpenses.map((exp) => {
-                  const cat = getCat(exp.categoryId);
+                  const cat = catMap.get(exp.categoryId);
                   return (
-                    <div key={exp.id} className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50">
+                    <div
+                      key={exp.id}
+                      className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50"
+                    >
                       <span className="text-lg">{cat?.icon || "📦"}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{cat?.name || "Unknown"}</p>
-                        {exp.note && <p className="text-xs text-muted-foreground truncate">{exp.note}</p>}
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {cat?.name || "Unknown"}
+                        </p>
+                        {exp.note && (
+                          <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
+                        )}
                       </div>
                       <span
                         className={`text-sm font-semibold ${

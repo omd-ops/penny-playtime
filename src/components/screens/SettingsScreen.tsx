@@ -20,7 +20,16 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useTheme } from "@/components/ThemeProvider";
-import { Plus, Trash2, Sun, Moon, Monitor, ChevronRight, FileSpreadsheet, Search } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronRight,
+  FileSpreadsheet,
+  Search,
+} from "lucide-react";
 import { DailyUpdateReminderSettings } from "@/components/DailyUpdateReminderSettings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -43,11 +52,16 @@ export function SettingsScreen() {
 
   // Category CRUD
   function addCategory() {
-    if (!catName.trim()) { toast.error("Enter a category name"); return; }
+    if (!catName.trim()) {
+      toast.error("Enter a category name");
+      return;
+    }
     const newCat: Category = {
       id: generateId(),
       name: catName.trim(),
-      color: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0")}`,
+      color: `#${Math.floor(Math.random() * 16777215)
+        .toString(16)
+        .padStart(6, "0")}`,
       icon: catIcon,
     };
     setCategories((prev) => [...prev, newCat]);
@@ -83,10 +97,15 @@ export function SettingsScreen() {
 
   function saveTarget() {
     const amt = parseFloat(targetAmount);
-    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!amt || amt <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
 
     if (editTargetId) {
-      setTargets((prev) => prev.map((t) => t.id === editTargetId ? { ...t, period: targetPeriod, amount: amt } : t));
+      setTargets((prev) =>
+        prev.map((t) => (t.id === editTargetId ? { ...t, period: targetPeriod, amount: amt } : t)),
+      );
       toast.success("Target updated");
     } else {
       // Replace if same period exists
@@ -118,7 +137,9 @@ export function SettingsScreen() {
 
       {/* Theme */}
       <section className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Appearance</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Appearance
+        </h2>
         <div className="flex gap-2 rounded-xl bg-card p-1.5 border border-border/50">
           {themeOptions.map((opt) => (
             <button
@@ -140,7 +161,9 @@ export function SettingsScreen() {
 
       {/* Currency */}
       <section className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Currency</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Currency
+        </h2>
         <div className="flex gap-2 flex-wrap">
           {currencyOptions.map((c) => (
             <button
@@ -164,7 +187,9 @@ export function SettingsScreen() {
       {/* Spending caps (same data as Notes tab) */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Spending caps</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Spending caps
+          </h2>
           <Button variant="ghost" size="sm" onClick={() => openTargetForm()} className="gap-1">
             <Plus className="h-4 w-4" /> Add
           </Button>
@@ -172,22 +197,37 @@ export function SettingsScreen() {
         {targets.length === 0 ? (
           <div className="rounded-xl bg-card border border-border/50 p-4 text-center">
             <p className="text-sm text-muted-foreground">
-              No spending caps yet. Add one to track spending against a daily, monthly, or yearly limit. 🎯
+              No spending caps yet. Add one to track spending against a daily, monthly, or yearly
+              limit. 🎯
             </p>
           </div>
         ) : (
           <div className="space-y-2">
             {targets.map((t) => (
-              <div key={t.id} className="flex items-center justify-between rounded-xl bg-card p-3 border border-border/50">
+              <div
+                key={t.id}
+                className="flex items-center justify-between rounded-xl bg-card p-3 border border-border/50"
+              >
                 <div>
                   <p className="text-sm font-medium text-foreground capitalize">{t.period}</p>
-                  <p className="text-xs text-muted-foreground">{settings.currency}{t.amount.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {settings.currency}
+                    {t.amount.toFixed(2)}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => openTargetForm(t)} className="min-h-[44px] min-w-[32px] flex items-center justify-center text-muted-foreground hover:text-foreground" aria-label="Edit target">
+                  <button
+                    onClick={() => openTargetForm(t)}
+                    className="min-h-[44px] min-w-[32px] flex items-center justify-center text-muted-foreground hover:text-foreground"
+                    aria-label="Edit target"
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                  <button onClick={() => deleteTarget(t.id)} className="min-h-[44px] min-w-[32px] flex items-center justify-center text-muted-foreground hover:text-destructive" aria-label="Delete target">
+                  <button
+                    onClick={() => deleteTarget(t.id)}
+                    className="min-h-[44px] min-w-[32px] flex items-center justify-center text-muted-foreground hover:text-destructive"
+                    aria-label="Delete target"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -200,14 +240,19 @@ export function SettingsScreen() {
       {/* Categories */}
       <section className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Categories</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Categories
+          </h2>
           <Button variant="ghost" size="sm" onClick={() => setShowCatForm(true)} className="gap-1">
             <Plus className="h-4 w-4" /> Add
           </Button>
         </div>
         <div className="space-y-2">
           {categories.map((cat) => (
-            <div key={cat.id} className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50">
+            <div
+              key={cat.id}
+              className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50"
+            >
               <span className="text-lg">{cat.icon}</span>
               <span className="flex-1 text-sm font-medium text-foreground">{cat.name}</span>
               <button
@@ -224,13 +269,22 @@ export function SettingsScreen() {
 
       {/* Phase 2 stubs */}
       <section className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Coming Soon</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Coming Soon
+        </h2>
         <div className="space-y-2">
           {[
-            { icon: FileSpreadsheet, label: "Reports & Export", desc: "Download Excel, PDF, and CSV" },
+            {
+              icon: FileSpreadsheet,
+              label: "Reports & Export",
+              desc: "Download Excel, PDF, and CSV",
+            },
             { icon: Search, label: "Search & Filter", desc: "Find expenses by date and category" },
           ].map((item) => (
-            <div key={item.label} className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50 opacity-60">
+            <div
+              key={item.label}
+              className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50 opacity-60"
+            >
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
                 <item.icon className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -253,14 +307,32 @@ export function SettingsScreen() {
           </SheetHeader>
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="cat-icon">Icon</label>
-              <Input id="cat-icon" value={catIcon} onChange={(e) => setCatIcon(e.target.value)} className="mt-1 h-12 text-2xl text-center" maxLength={2} />
+              <label className="text-sm font-medium text-foreground" htmlFor="cat-icon">
+                Icon
+              </label>
+              <Input
+                id="cat-icon"
+                value={catIcon}
+                onChange={(e) => setCatIcon(e.target.value)}
+                className="mt-1 h-12 text-2xl text-center"
+                maxLength={2}
+              />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="cat-name">Name</label>
-              <Input id="cat-name" value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="e.g. Groceries" className="mt-1 h-12" />
+              <label className="text-sm font-medium text-foreground" htmlFor="cat-name">
+                Name
+              </label>
+              <Input
+                id="cat-name"
+                value={catName}
+                onChange={(e) => setCatName(e.target.value)}
+                placeholder="e.g. Groceries"
+                className="mt-1 h-12"
+              />
             </div>
-            <Button onClick={addCategory} className="w-full h-12 rounded-xl">Add Category</Button>
+            <Button onClick={addCategory} className="w-full h-12 rounded-xl">
+              Add Category
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
@@ -270,12 +342,19 @@ export function SettingsScreen() {
         <SheetContent side="bottom" className="rounded-t-2xl">
           <SheetHeader>
             <SheetTitle>{editTargetId ? "Edit spending cap" : "Set spending cap"}</SheetTitle>
-            <SheetDescription>How much you plan to spend per day, month, or year (not habit checklists).</SheetDescription>
+            <SheetDescription>
+              How much you plan to spend per day, month, or year (not habit checklists).
+            </SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="target-period">Period</label>
-              <Select value={targetPeriod} onValueChange={(v) => setTargetPeriod(v as "daily" | "monthly" | "yearly")}>
+              <label className="text-sm font-medium text-foreground" htmlFor="target-period">
+                Period
+              </label>
+              <Select
+                value={targetPeriod}
+                onValueChange={(v) => setTargetPeriod(v as "daily" | "monthly" | "yearly")}
+              >
                 <SelectTrigger className="mt-1 h-12" id="target-period">
                   <SelectValue />
                 </SelectTrigger>
@@ -287,8 +366,18 @@ export function SettingsScreen() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="target-amount">Amount ({settings.currency})</label>
-              <Input id="target-amount" type="number" inputMode="decimal" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} placeholder="0.00" className="mt-1 h-12 text-lg" />
+              <label className="text-sm font-medium text-foreground" htmlFor="target-amount">
+                Amount ({settings.currency})
+              </label>
+              <Input
+                id="target-amount"
+                type="number"
+                inputMode="decimal"
+                value={targetAmount}
+                onChange={(e) => setTargetAmount(e.target.value)}
+                placeholder="0.00"
+                className="mt-1 h-12 text-lg"
+              />
             </div>
             <Button onClick={saveTarget} className="w-full h-12 rounded-xl">
               {editTargetId ? "Save changes" : "Save cap"}

@@ -67,7 +67,6 @@ export interface AppSettings {
   dailyUpdateReminderTimes?: string[];
 }
 
-/** Keep in sync with the duplicate list in `spend-data-provider.tsx` (avoids circular imports). */
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "food", name: "Food & Drinks", color: "#10b981", icon: "🍔" },
   { id: "transport", name: "Transport", color: "#3b82f6", icon: "🚌" },
@@ -158,6 +157,9 @@ export function getBudgetStatus(spent: number, limit: number): "safe" | "warning
   return "safe";
 }
 
-export function getTargetForPeriod(targets: BudgetTarget[], period: "daily" | "monthly" | "yearly") {
+export function getTargetForPeriod(
+  targets: BudgetTarget[],
+  period: "daily" | "monthly" | "yearly",
+) {
   return targets.find((t) => t.period === period);
 }

@@ -18,28 +18,28 @@ This document describes the **architecture** for a **mobile-first web applicatio
 
 ### 2.1 Functional (from product spec)
 
-| Area | Capability |
-|------|------------|
-| Identity | Register, login, session or token-based access |
-| Expenses | CRUD; filter by date range and category; pagination |
-| Categories | User-defined categories with optional icon/color |
-| Targets | CRUD for budget targets per period (`daily`, `monthly`, `yearly`) |
-| Analytics | Aggregates by period; optional period-over-period compare |
-| Notifications | User preferences; web push subscription lifecycle |
-| Reports | Async generation of Excel/PDF with tables + charts; download |
-| CSV | Optional lightweight raw export |
-| Post-MVP | Voice agent uses domain APIs via tool layer; confirmation before writes |
+| Area          | Capability                                                              |
+| ------------- | ----------------------------------------------------------------------- |
+| Identity      | Register, login, session or token-based access                          |
+| Expenses      | CRUD; filter by date range and category; pagination                     |
+| Categories    | User-defined categories with optional icon/color                        |
+| Targets       | CRUD for budget targets per period (`daily`, `monthly`, `yearly`)       |
+| Analytics     | Aggregates by period; optional period-over-period compare               |
+| Notifications | User preferences; web push subscription lifecycle                       |
+| Reports       | Async generation of Excel/PDF with tables + charts; download            |
+| CSV           | Optional lightweight raw export                                         |
+| Post-MVP      | Voice agent uses domain APIs via tool layer; confirmation before writes |
 
 ### 2.2 Non-functional
 
-| Area | Target |
-|------|--------|
-| Availability | 99.9% API monthly (single-region MVP acceptable) |
-| Latency | p95 below 300 ms for read/write CRUD under normal load |
-| Reports | Async if generation exceeds ~2 s; progress or polling |
-| Security | TLS everywhere; auth on all private routes; secrets not in client |
-| Privacy | User data scoped by `userId`; configurable data retention |
-| Scale (initial) | Thousands of active users; horizontal scale of stateless API |
+| Area            | Target                                                            |
+| --------------- | ----------------------------------------------------------------- |
+| Availability    | 99.9% API monthly (single-region MVP acceptable)                  |
+| Latency         | p95 below 300 ms for read/write CRUD under normal load            |
+| Reports         | Async if generation exceeds ~2 s; progress or polling             |
+| Security        | TLS everywhere; auth on all private routes; secrets not in client |
+| Privacy         | User data scoped by `userId`; configurable data retention         |
+| Scale (initial) | Thousands of active users; horizontal scale of stateless API      |
 
 ---
 
@@ -108,15 +108,15 @@ flowchart TB
 
 ## 4. Component boundaries
 
-| Component | Responsibility | Owns |
-|-----------|----------------|------|
-| **Web client** | UI, PWA shell, TanStack Query, forms | Browser state only |
-| **API layer** | Routing, validation (e.g. Zod), authn/authz, rate limits | Nothing persistent |
-| **Domain services** | Expense, category, target, analytics, notification prefs | Business invariants |
-| **Report service** | Build workbook/PDF from domain data | Templates, chart rendering |
-| **Notification service** | Compose payloads; schedule; send push | Push templates |
-| **Worker process** | Consume queues: reports, scheduled reminders, digests | Job retries, DLQ |
-| **Agent service (post-MVP)** | Map NL → tool calls; audit log | Conversation state (optional) |
+| Component                    | Responsibility                                           | Owns                          |
+| ---------------------------- | -------------------------------------------------------- | ----------------------------- |
+| **Web client**               | UI, PWA shell, TanStack Query, forms                     | Browser state only            |
+| **API layer**                | Routing, validation (e.g. Zod), authn/authz, rate limits | Nothing persistent            |
+| **Domain services**          | Expense, category, target, analytics, notification prefs | Business invariants           |
+| **Report service**           | Build workbook/PDF from domain data                      | Templates, chart rendering    |
+| **Notification service**     | Compose payloads; schedule; send push                    | Push templates                |
+| **Worker process**           | Consume queues: reports, scheduled reminders, digests    | Job retries, DLQ              |
+| **Agent service (post-MVP)** | Map NL → tool calls; audit log                           | Conversation state (optional) |
 
 **Rule:** Domain services are the **only** place that mutates PostgreSQL for core entities. REST handlers and agent tools call into these services.
 
@@ -249,37 +249,37 @@ User → POST /api/v1/agent/turn → Orchestrator builds LLM messages + tools
 
 Detailed contracts live in **[api-design.md](./api-design.md)**. Surface overview:
 
-| Domain | Style |
-|--------|--------|
-| CRUD | REST JSON under `/api/v1` |
-| Lists | Cursor or offset pagination; filters as query params |
-| Reports | Async jobs with polling |
-| Analytics | Read-only GET with query params |
+| Domain    | Style                                                |
+| --------- | ---------------------------------------------------- |
+| CRUD      | REST JSON under `/api/v1`                            |
+| Lists     | Cursor or offset pagination; filters as query params |
+| Reports   | Async jobs with polling                              |
+| Analytics | Read-only GET with query params                      |
 
 ---
 
 ## 8. Security model
 
-| Concern | Approach |
-|---------|----------|
-| Transport | HTTPS only; HSTS at edge |
-| Authentication | OAuth/email via IdP (Clerk, Auth.js, etc.); API receives stable `userId` |
-| Authorization | Every query scoped by authenticated `userId`; no resource access without ownership check |
-| Rate limiting | Per IP + per user; stricter on auth and agent endpoints |
-| Secrets | LLM/STT keys only on server; agent never runs in browser with raw keys |
-| Reports | Signed URLs short TTL; job ownership verified |
+| Concern        | Approach                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Transport      | HTTPS only; HSTS at edge                                                                 |
+| Authentication | OAuth/email via IdP (Clerk, Auth.js, etc.); API receives stable `userId`                 |
+| Authorization  | Every query scoped by authenticated `userId`; no resource access without ownership check |
+| Rate limiting  | Per IP + per user; stricter on auth and agent endpoints                                  |
+| Secrets        | LLM/STT keys only on server; agent never runs in browser with raw keys                   |
+| Reports        | Signed URLs short TTL; job ownership verified                                            |
 
 ---
 
 ## 9. Scaling and reliability
 
-| Mechanism | Use |
-|-----------|-----|
-| Stateless API | Scale horizontal behind load balancer |
-| PostgreSQL | Connection pool (PgBouncer); indexes on `(userId, occurredAt)` for expenses |
-| Redis | Queue + rate limit counters; not sole source of truth |
-| Workers | Separate process; retry with backoff; dead-letter queue for failed report jobs |
-| CDN | Static PWA assets immutable hashed filenames |
+| Mechanism     | Use                                                                            |
+| ------------- | ------------------------------------------------------------------------------ |
+| Stateless API | Scale horizontal behind load balancer                                          |
+| PostgreSQL    | Connection pool (PgBouncer); indexes on `(userId, occurredAt)` for expenses    |
+| Redis         | Queue + rate limit counters; not sole source of truth                          |
+| Workers       | Separate process; retry with backoff; dead-letter queue for failed report jobs |
+| CDN           | Static PWA assets immutable hashed filenames                                   |
 
 **Async rule:** Operations expected to exceed **~500 ms** (large PDF, complex charts) run in **workers**; API returns **202** or job id.
 
@@ -287,13 +287,13 @@ Detailed contracts live in **[api-design.md](./api-design.md)**. Surface overvie
 
 ## 10. Trade-off decision log
 
-| Decision | Options | Choice | Rationale |
-|----------|---------|--------|-----------|
-| Architecture | Microservices vs monolith | Modular monolith + workers | Small team; fewer ops; clear modules |
-| Primary DB | SQL vs document | PostgreSQL | Relational fits expenses + targets + reporting |
-| Report storage | Stream vs S3 | S3-compatible for large files | Avoid bloating app server disk |
-| Real-time | WebSocket vs polling | Polling/SSE for job status | Simpler than WS for rare report progress |
-| Agent | Client LLM vs server | Server-only tool execution | Security and single business-rules layer |
+| Decision       | Options                   | Choice                        | Rationale                                      |
+| -------------- | ------------------------- | ----------------------------- | ---------------------------------------------- |
+| Architecture   | Microservices vs monolith | Modular monolith + workers    | Small team; fewer ops; clear modules           |
+| Primary DB     | SQL vs document           | PostgreSQL                    | Relational fits expenses + targets + reporting |
+| Report storage | Stream vs S3              | S3-compatible for large files | Avoid bloating app server disk                 |
+| Real-time      | WebSocket vs polling      | Polling/SSE for job status    | Simpler than WS for rare report progress       |
+| Agent          | Client LLM vs server      | Server-only tool execution    | Security and single business-rules layer       |
 
 ---
 
@@ -314,10 +314,10 @@ See **[open-questions.md](./open-questions.md)** for the full list, status, and 
 
 ## 13. Document map
 
-| Section | Content |
-|---------|---------|
-| §1–2 | Scope and requirements |
-| §3–5 | Architecture diagram, components, ER diagram |
-| §6–7 | Flows and API pointer |
-| §8–11 | Security, scaling, decisions, observability |
-| §12 | Pointer to [open-questions.md](./open-questions.md) |
+| Section | Content                                             |
+| ------- | --------------------------------------------------- |
+| §1–2    | Scope and requirements                              |
+| §3–5    | Architecture diagram, components, ER diagram        |
+| §6–7    | Flows and API pointer                               |
+| §8–11   | Security, scaling, decisions, observability         |
+| §12     | Pointer to [open-questions.md](./open-questions.md) |

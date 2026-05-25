@@ -42,7 +42,8 @@ export function DailyUpdateReminderSettings() {
     try {
       const result = await Notification.requestPermission();
       if (result === "granted") toast.success("Notifications enabled");
-      else if (result === "denied") toast.error("Notifications blocked — enable them in browser settings.");
+      else if (result === "denied")
+        toast.error("Notifications blocked — enable them in browser settings.");
       else toast.message("You can allow notifications anytime from here.");
     } finally {
       setRequesting(false);
@@ -89,7 +90,10 @@ export function DailyUpdateReminderSettings() {
     <section className="mb-6" aria-labelledby="daily-reminders-heading">
       <div className="flex items-center gap-2 mb-3">
         <Bell className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
-        <h2 id="daily-reminders-heading" className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        <h2
+          id="daily-reminders-heading"
+          className="text-sm font-semibold text-muted-foreground uppercase tracking-wider"
+        >
           Daily update reminders
         </h2>
       </div>
@@ -118,11 +122,14 @@ export function DailyUpdateReminderSettings() {
         {enabled && (
           <>
             {perm === "unsupported" && (
-              <p className="text-xs text-muted-foreground">Your environment does not support notifications.</p>
+              <p className="text-xs text-muted-foreground">
+                Your environment does not support notifications.
+              </p>
             )}
             {perm === "denied" && (
               <p className="text-xs text-amber-600 dark:text-amber-500">
-                Notifications are blocked. Unblock SpendWise in your browser site settings to use reminders.
+                Notifications are blocked. Unblock SpendWise in your browser site settings to use
+                reminders.
               </p>
             )}
             {perm === "default" && (
@@ -137,11 +144,15 @@ export function DailyUpdateReminderSettings() {
               </Button>
             )}
             {perm === "granted" && (
-              <p className="text-xs text-muted-foreground">Reminders fire at the times below while this app is open.</p>
+              <p className="text-xs text-muted-foreground">
+                Reminders fire at the times below while this app is open.
+              </p>
             )}
 
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Reminder times</Label>
+              <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                Reminder times
+              </Label>
               {times.map((t, i) => (
                 <div key={`${t}-${i}`} className="flex items-center gap-2">
                   <input

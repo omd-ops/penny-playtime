@@ -12,24 +12,14 @@ import {
 } from "react";
 import { toast } from "sonner";
 import type { AppSettings, BudgetTarget, Category, DayFlag, DayGoal, Expense } from "./store";
-import { DEFAULT_SETTINGS as STORE_DEFAULT_SETTINGS } from "./store";
+import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS as STORE_DEFAULT_SETTINGS } from "./store";
 import { createBrowserSupabase } from "@/lib/supabase/client";
-
-/** Keep in sync with `DEFAULT_CATEGORIES` in `store.ts`. */
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: "food", name: "Food & Drinks", color: "#10b981", icon: "🍔" },
-  { id: "transport", name: "Transport", color: "#3b82f6", icon: "🚌" },
-  { id: "shopping", name: "Shopping", color: "#f59e0b", icon: "🛍️" },
-  { id: "bills", name: "Bills & Utilities", color: "#ef4444", icon: "📱" },
-  { id: "entertainment", name: "Entertainment", color: "#8b5cf6", icon: "🎬" },
-  { id: "health", name: "Health", color: "#ec4899", icon: "💊" },
-  { id: "education", name: "Education", color: "#06b6d4", icon: "📚" },
-  { id: "other", name: "Other", color: "#6b7280", icon: "📦" },
-];
 
 const DEFAULT_SETTINGS: AppSettings = STORE_DEFAULT_SETTINGS;
 
-const LS = {
+const SNAPSHOT_KEY = "et_snapshot";
+
+const LS_OLD = {
   categories: "et_categories",
   expenses: "et_expenses",
   targets: "et_targets",
@@ -58,6 +48,15 @@ function readLocalSnapshot(): GlobalState {
       settings: DEFAULT_SETTINGS,
     };
   }
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    if (raw) {
+      return JSON.parse(raw) as GlobalState;
+    }
+  } catch {
+    // fall through to legacy keys
+  }
+  // Migrate from legacy individual keys
   const read = <T,>(key: string, fallback: T): T => {
     try {
       const raw = localStorage.getItem(key);
@@ -66,24 +65,29 @@ function readLocalSnapshot(): GlobalState {
       return fallback;
     }
   };
-  return {
-    categories: read(LS.categories, DEFAULT_CATEGORIES),
-    expenses: read(LS.expenses, []),
-    budgetTargets: read(LS.targets, []),
-    dayFlags: read(LS.dayflags, []),
-    dayGoals: read(LS.daygoals, []),
-    settings: read(LS.settings, DEFAULT_SETTINGS),
+  const legacy: GlobalState = {
+    categories: read(LS_OLD.categories, DEFAULT_CATEGORIES),
+    expenses: read(LS_OLD.expenses, []),
+    budgetTargets: read(LS_OLD.targets, []),
+    dayFlags: read(LS_OLD.dayflags, []),
+    dayGoals: read(LS_OLD.daygoals, []),
+    settings: read(LS_OLD.settings, DEFAULT_SETTINGS),
   };
+  // Persist in new single-key format and clean up old keys
+  writeLocalSnapshot(legacy);
+  cleanupLegacyKeys();
+  return legacy;
 }
 
 function writeLocalSnapshot(s: GlobalState) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(LS.categories, JSON.stringify(s.categories));
-  localStorage.setItem(LS.expenses, JSON.stringify(s.expenses));
-  localStorage.setItem(LS.targets, JSON.stringify(s.budgetTargets));
-  localStorage.setItem(LS.dayflags, JSON.stringify(s.dayFlags));
-  localStorage.setItem(LS.daygoals, JSON.stringify(s.dayGoals));
-  localStorage.setItem(LS.settings, JSON.stringify(s.settings));
+  localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(s));
+}
+
+function cleanupLegacyKeys() {
+  for (const key of Object.values(LS_OLD)) {
+    localStorage.removeItem(key);
+  }
 }
 
 type Ctx = {
@@ -172,7 +176,8 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
     (u: Category[] | ((p: Category[]) => Category[])) => {
       patch((prev) => ({
         ...prev,
-        categories: typeof u === "function" ? (u as (p: Category[]) => Category[])(prev.categories) : u,
+        categories:
+          typeof u === "function" ? (u as (p: Category[]) => Category[])(prev.categories) : u,
       }));
     },
     [patch],
@@ -193,7 +198,9 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
       patch((prev) => ({
         ...prev,
         budgetTargets:
-          typeof u === "function" ? (u as (p: BudgetTarget[]) => BudgetTarget[])(prev.budgetTargets) : u,
+          typeof u === "function"
+            ? (u as (p: BudgetTarget[]) => BudgetTarget[])(prev.budgetTargets)
+            : u,
       }));
     },
     [patch],
@@ -223,7 +230,8 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
     (u: AppSettings | ((p: AppSettings) => AppSettings)) => {
       patch((prev) => ({
         ...prev,
-        settings: typeof u === "function" ? (u as (p: AppSettings) => AppSettings)(prev.settings) : u,
+        settings:
+          typeof u === "function" ? (u as (p: AppSettings) => AppSettings)(prev.settings) : u,
       }));
     },
     [patch],
@@ -404,7 +412,10 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" aria-hidden />
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
+          aria-hidden
+        />
         <p className="text-sm">Loading your data…</p>
       </div>
     );
@@ -413,7 +424,10 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
   return <SpendCtx.Provider value={value}>{children}</SpendCtx.Provider>;
 }
 
-export function useCategories(): [Category[], (u: Category[] | ((p: Category[]) => Category[])) => void] {
+export function useCategories(): [
+  Category[],
+  (u: Category[] | ((p: Category[]) => Category[])) => void,
+] {
   const { categories, setCategories } = useSpendCtx();
   return [categories, setCategories];
 }
@@ -423,7 +437,10 @@ export function useExpenses(): [Expense[], (u: Expense[] | ((p: Expense[]) => Ex
   return [expenses, setExpenses];
 }
 
-export function useBudgetTargets(): [BudgetTarget[], (u: BudgetTarget[] | ((p: BudgetTarget[]) => BudgetTarget[])) => void] {
+export function useBudgetTargets(): [
+  BudgetTarget[],
+  (u: BudgetTarget[] | ((p: BudgetTarget[]) => BudgetTarget[])) => void,
+] {
   const { budgetTargets, setBudgetTargets } = useSpendCtx();
   return [budgetTargets, setBudgetTargets];
 }
@@ -438,7 +455,10 @@ export function useDayGoals(): [DayGoal[], (u: DayGoal[] | ((p: DayGoal[]) => Da
   return [dayGoals, setDayGoals];
 }
 
-export function useSettings(): [AppSettings, (u: AppSettings | ((p: AppSettings) => AppSettings)) => void] {
+export function useSettings(): [
+  AppSettings,
+  (u: AppSettings | ((p: AppSettings) => AppSettings)) => void,
+] {
   const { settings, setSettings } = useSpendCtx();
   return [settings, setSettings];
 }
