@@ -109,7 +109,7 @@ export function ExpensesScreen() {
     toast.success("Expense deleted");
   }
 
-  const getCat = (id: string) => categories.find((c) => c.id === id);
+  const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   // Group by date
   const grouped = useMemo(() => {
@@ -132,7 +132,8 @@ export function ExpensesScreen() {
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <span className="text-4xl mb-3">📝</span>
           <p className="text-muted-foreground text-sm">
-            No expenses yet. Tap <strong>Cash In</strong> or <strong>Cash Out</strong> below to log your first one!
+            No expenses yet. Tap <strong>Cash In</strong> or <strong>Cash Out</strong> below to log
+            your first one!
           </p>
         </div>
       ) : (
@@ -142,7 +143,11 @@ export function ExpensesScreen() {
             const label =
               dateStr === todayStr()
                 ? "Today"
-                : d.toLocaleDateString("default", { weekday: "short", month: "short", day: "numeric" });
+                : d.toLocaleDateString("default", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  });
             return (
               <div key={dateStr}>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -150,7 +155,7 @@ export function ExpensesScreen() {
                 </p>
                 <div className="space-y-2">
                   {items.map((exp) => {
-                    const cat = getCat(exp.categoryId);
+                    const cat = catMap.get(exp.categoryId);
                     return (
                       <div
                         key={exp.id}
@@ -165,8 +170,11 @@ export function ExpensesScreen() {
                             <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
                           )}
                         </div>
-                        <span className={`text-sm font-semibold ${exp.type === "cash-in" ? "text-emerald-600" : "text-red-500"}`}>
-                          {exp.type === "cash-in" ? "+" : "−"}{formatCurrency(exp.amount, settings.currency)}
+                        <span
+                          className={`text-sm font-semibold ${exp.type === "cash-in" ? "text-emerald-600" : "text-red-500"}`}
+                        >
+                          {exp.type === "cash-in" ? "+" : "−"}
+                          {formatCurrency(exp.amount, settings.currency)}
                         </span>
                         <button
                           onClick={() => openEdit(exp)}
@@ -193,15 +201,19 @@ export function ExpensesScreen() {
       )}
 
       {/* Add/Edit sheet */}
-      <Sheet open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); resetForm(); } }}>
+      <Sheet
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowForm(false);
+            resetForm();
+          }
+        }}
+      >
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh]">
           <SheetHeader>
             <SheetTitle>
-              {editingId
-                ? "Edit Expense"
-                : expenseType === "cash-in"
-                  ? "Cash In"
-                  : "Cash Out"}
+              {editingId ? "Edit Expense" : expenseType === "cash-in" ? "Cash In" : "Cash Out"}
             </SheetTitle>
             <SheetDescription>
               {editingId ? "Update the details below." : "Log a new expense in seconds."}
@@ -209,7 +221,9 @@ export function ExpensesScreen() {
           </SheetHeader>
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="exp-amount">Amount ({settings.currency})</label>
+              <label className="text-sm font-medium text-foreground" htmlFor="exp-amount">
+                Amount ({settings.currency})
+              </label>
               <Input
                 id="exp-amount"
                 type="number"
@@ -222,7 +236,9 @@ export function ExpensesScreen() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="exp-category">Category</label>
+              <label className="text-sm font-medium text-foreground" htmlFor="exp-category">
+                Category
+              </label>
               <Select value={categoryId} onValueChange={setCategoryId}>
                 <SelectTrigger className="mt-1 h-12" id="exp-category">
                   <SelectValue placeholder="Select category" />
@@ -237,7 +253,9 @@ export function ExpensesScreen() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="exp-note">Note (optional)</label>
+              <label className="text-sm font-medium text-foreground" htmlFor="exp-note">
+                Note (optional)
+              </label>
               <Input
                 id="exp-note"
                 placeholder="Coffee with Sarah..."
@@ -247,7 +265,9 @@ export function ExpensesScreen() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground" htmlFor="exp-date">Date</label>
+              <label className="text-sm font-medium text-foreground" htmlFor="exp-date">
+                Date
+              </label>
               <Input
                 id="exp-date"
                 type="date"
@@ -264,7 +284,11 @@ export function ExpensesScreen() {
                   : "bg-red-600 hover:bg-red-700"
               }`}
             >
-              {editingId ? "Save Changes" : expenseType === "cash-in" ? "Add Cash In" : "Add Cash Out"}
+              {editingId
+                ? "Save Changes"
+                : expenseType === "cash-in"
+                  ? "Add Cash In"
+                  : "Add Cash Out"}
             </Button>
           </div>
         </SheetContent>

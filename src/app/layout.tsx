@@ -12,12 +12,10 @@ export const metadata: Metadata = {
     default: "SpendWise — Daily Expense Tracker",
     template: "%s — SpendWise",
   },
-  description:
-    "Track daily expenses, set budgets, and gain insights into your spending habits.",
+  description: "Track daily expenses, set budgets, and gain insights into your spending habits.",
   openGraph: {
     title: "SpendWise — Daily Expense Tracker",
-    description:
-      "Track daily expenses, set budgets, and gain insights into your spending habits.",
+    description: "Track daily expenses, set budgets, and gain insights into your spending habits.",
     type: "website",
   },
   twitter: {

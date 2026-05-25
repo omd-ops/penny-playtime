@@ -9,12 +9,12 @@
 
 ## 1. Goals and principles
 
-| Goal | Approach |
-|------|----------|
-| **Correctness** | `NUMERIC` for money; UUID primary keys; explicit foreign keys and checks |
-| **Performance** | Indexes match list/filter and analytics queries; avoid over-indexing |
-| **Evolvability** | Additive migrations first; enums via `CHECK` or `TEXT` + constraint for simpler changes |
-| **Zero-cost operation (hobby / personal)** | Schema stays small; see §8 for free-tier services and sizing discipline |
+| Goal                                       | Approach                                                                                |
+| ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| **Correctness**                            | `NUMERIC` for money; UUID primary keys; explicit foreign keys and checks                |
+| **Performance**                            | Indexes match list/filter and analytics queries; avoid over-indexing                    |
+| **Evolvability**                           | Additive migrations first; enums via `CHECK` or `TEXT` + constraint for simpler changes |
+| **Zero-cost operation (hobby / personal)** | Schema stays small; see §8 for free-tier services and sizing discipline                 |
 
 This schema targets a **single-tenant-per-row** model (`user_id` on every user-owned table). There is no separate `tenants` table unless the product later adds organizations.
 
@@ -22,17 +22,17 @@ This schema targets a **single-tenant-per-row** model (`user_id` on every user-o
 
 ## 2. Entity catalog
 
-| Table | Description | Lifecycle |
-|-------|-------------|-----------|
-| `users` | Application profile keyed to auth identity | created → active → optional soft-delete |
-| `categories` | User-defined expense categories | created → updated → deleted if unused |
-| `expenses` | Line-item spending | insert/update/delete |
-| `budget_targets` | Daily / monthly / yearly limits | effective window per product rules |
-| `notification_preferences` | One row per user (push/reminder/threshold) | upsert |
-| `push_subscriptions` | Web Push endpoints per device/browser | insert/delete |
-| `report_jobs` | Async Excel/PDF generation jobs | queued → processing → completed / failed |
-| `daily_target_day_marks` | User checkbox: “met daily target” per calendar date | upsert |
-| `agent_turns` (post-MVP) | Audit of agent tool calls (no raw audio) | append-only |
+| Table                      | Description                                         | Lifecycle                                |
+| -------------------------- | --------------------------------------------------- | ---------------------------------------- |
+| `users`                    | Application profile keyed to auth identity          | created → active → optional soft-delete  |
+| `categories`               | User-defined expense categories                     | created → updated → deleted if unused    |
+| `expenses`                 | Line-item spending                                  | insert/update/delete                     |
+| `budget_targets`           | Daily / monthly / yearly limits                     | effective window per product rules       |
+| `notification_preferences` | One row per user (push/reminder/threshold)          | upsert                                   |
+| `push_subscriptions`       | Web Push endpoints per device/browser               | insert/delete                            |
+| `report_jobs`              | Async Excel/PDF generation jobs                     | queued → processing → completed / failed |
+| `daily_target_day_marks`   | User checkbox: “met daily target” per calendar date | upsert                                   |
+| `agent_turns` (post-MVP)   | Audit of agent tool calls (no raw audio)            | append-only                              |
 
 ---
 
@@ -51,17 +51,17 @@ This schema targets a **single-tenant-per-row** model (`user_id` on every user-o
 
 Stores profile data aligned with `GET /me`. Link to external auth (Clerk, Supabase Auth, Auth.js subject, etc.) via `auth_subject` or provider-specific column.
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `id` | UUID | NO | `gen_random_uuid()` | PK |
-| `auth_subject` | TEXT | NO | — | **UNIQUE**; stable id from IdP (e.g. `sub` claim) |
-| `email` | VARCHAR(320) | NO | — | UNIQUE (case-insensitive via functional index or `citext` if enabled) |
-| `display_name` | VARCHAR(80) | YES | NULL | |
-| `currency` | CHAR(3) | NO | `'USD'` | ISO 4217 |
-| `timezone` | VARCHAR(64) | NO | `'UTC'` | IANA name |
-| `created_at` | TIMESTAMPTZ | NO | `now()` | |
-| `updated_at` | TIMESTAMPTZ | NO | `now()` | maintain via trigger or app |
-| `deleted_at` | TIMESTAMPTZ | YES | NULL | soft-delete account |
+| Column         | Type         | Nullable | Default             | Notes                                                                 |
+| -------------- | ------------ | -------- | ------------------- | --------------------------------------------------------------------- |
+| `id`           | UUID         | NO       | `gen_random_uuid()` | PK                                                                    |
+| `auth_subject` | TEXT         | NO       | —                   | **UNIQUE**; stable id from IdP (e.g. `sub` claim)                     |
+| `email`        | VARCHAR(320) | NO       | —                   | UNIQUE (case-insensitive via functional index or `citext` if enabled) |
+| `display_name` | VARCHAR(80)  | YES      | NULL                |                                                                       |
+| `currency`     | CHAR(3)      | NO       | `'USD'`             | ISO 4217                                                              |
+| `timezone`     | VARCHAR(64)  | NO       | `'UTC'`             | IANA name                                                             |
+| `created_at`   | TIMESTAMPTZ  | NO       | `now()`             |                                                                       |
+| `updated_at`   | TIMESTAMPTZ  | NO       | `now()`             | maintain via trigger or app                                           |
+| `deleted_at`   | TIMESTAMPTZ  | YES      | NULL                | soft-delete account                                                   |
 
 **Indexes:**
 
@@ -74,15 +74,15 @@ Stores profile data aligned with `GET /me`. Link to external auth (Clerk, Supaba
 
 ### 4.2 `categories`
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `id` | UUID | NO | `gen_random_uuid()` | PK |
-| `user_id` | UUID | NO | — | FK → `users(id)` |
-| `name` | VARCHAR(64) | NO | — | |
-| `color` | VARCHAR(32) | YES | NULL | hex or token |
-| `icon_key` | VARCHAR(64) | YES | NULL | |
-| `created_at` | TIMESTAMPTZ | NO | `now()` | |
-| `updated_at` | TIMESTAMPTZ | NO | `now()` | |
+| Column       | Type        | Nullable | Default             | Notes            |
+| ------------ | ----------- | -------- | ------------------- | ---------------- |
+| `id`         | UUID        | NO       | `gen_random_uuid()` | PK               |
+| `user_id`    | UUID        | NO       | —                   | FK → `users(id)` |
+| `name`       | VARCHAR(64) | NO       | —                   |                  |
+| `color`      | VARCHAR(32) | YES      | NULL                | hex or token     |
+| `icon_key`   | VARCHAR(64) | YES      | NULL                |                  |
+| `created_at` | TIMESTAMPTZ | NO       | `now()`             |                  |
+| `updated_at` | TIMESTAMPTZ | NO       | `now()`             |                  |
 
 **Constraints:**
 
@@ -97,17 +97,17 @@ Stores profile data aligned with `GET /me`. Link to external auth (Clerk, Supaba
 
 ### 4.3 `expenses`
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `id` | UUID | NO | `gen_random_uuid()` | PK |
-| `user_id` | UUID | NO | — | FK → `users(id)` |
-| `category_id` | UUID | NO | — | FK → `categories(id)` |
-| `amount` | NUMERIC(14,4) | NO | — | must be positive |
-| `note` | VARCHAR(500) | YES | NULL | |
-| `occurred_at` | TIMESTAMPTZ | NO | — | when spend happened |
-| `entry_type` | TEXT | NO | `'debit'` | `CHECK (entry_type IN ('debit','credit'))` — **debit** = outflow (spend), **credit** = inflow (refund/income) for calendar credited totals |
-| `created_at` | TIMESTAMPTZ | NO | `now()` | |
-| `updated_at` | TIMESTAMPTZ | NO | `now()` | |
+| Column        | Type          | Nullable | Default             | Notes                                                                                                                                      |
+| ------------- | ------------- | -------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`          | UUID          | NO       | `gen_random_uuid()` | PK                                                                                                                                         |
+| `user_id`     | UUID          | NO       | —                   | FK → `users(id)`                                                                                                                           |
+| `category_id` | UUID          | NO       | —                   | FK → `categories(id)`                                                                                                                      |
+| `amount`      | NUMERIC(14,4) | NO       | —                   | must be positive                                                                                                                           |
+| `note`        | VARCHAR(500)  | YES      | NULL                |                                                                                                                                            |
+| `occurred_at` | TIMESTAMPTZ   | NO       | —                   | when spend happened                                                                                                                        |
+| `entry_type`  | TEXT          | NO       | `'debit'`           | `CHECK (entry_type IN ('debit','credit'))` — **debit** = outflow (spend), **credit** = inflow (refund/income) for calendar credited totals |
+| `created_at`  | TIMESTAMPTZ   | NO       | `now()`             |                                                                                                                                            |
+| `updated_at`  | TIMESTAMPTZ   | NO       | `now()`             |                                                                                                                                            |
 
 **Constraints:**
 
@@ -129,16 +129,16 @@ Stores profile data aligned with `GET /me`. Link to external auth (Clerk, Supaba
 
 ### 4.4 `budget_targets`
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `id` | UUID | NO | `gen_random_uuid()` | PK |
-| `user_id` | UUID | NO | — | FK → `users(id)` |
-| `period` | TEXT | NO | — | `CHECK (period IN ('daily','monthly','yearly'))` |
-| `amount` | NUMERIC(14,4) | NO | — | must be positive |
-| `effective_from` | DATE | NO | — | |
-| `effective_to` | DATE | YES | NULL | inclusive semantics defined in app |
-| `created_at` | TIMESTAMPTZ | NO | `now()` | |
-| `updated_at` | TIMESTAMPTZ | NO | `now()` | |
+| Column           | Type          | Nullable | Default             | Notes                                            |
+| ---------------- | ------------- | -------- | ------------------- | ------------------------------------------------ |
+| `id`             | UUID          | NO       | `gen_random_uuid()` | PK                                               |
+| `user_id`        | UUID          | NO       | —                   | FK → `users(id)`                                 |
+| `period`         | TEXT          | NO       | —                   | `CHECK (period IN ('daily','monthly','yearly'))` |
+| `amount`         | NUMERIC(14,4) | NO       | —                   | must be positive                                 |
+| `effective_from` | DATE          | NO       | —                   |                                                  |
+| `effective_to`   | DATE          | YES      | NULL                | inclusive semantics defined in app               |
+| `created_at`     | TIMESTAMPTZ   | NO       | `now()`             |                                                  |
+| `updated_at`     | TIMESTAMPTZ   | NO       | `now()`             |                                                  |
 
 **Constraints:**
 
@@ -161,18 +161,18 @@ Product doc allows evolution; **recommended for v1:** `UNIQUE (user_id, period)`
 
 One row per user (upsert).
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `user_id` | UUID | NO | — | PK, FK → `users(id)` |
-| `push_enabled` | BOOLEAN | NO | `false` | |
-| `daily_reminder_enabled` | BOOLEAN | NO | `false` | |
-| `daily_reminder_time` | TIME | YES | NULL | local interpretation with `timezone` on user |
-| `threshold_percent` | SMALLINT | YES | NULL | 1–100 |
-| `quiet_hours_start` | TIME | YES | NULL | |
-| `quiet_hours_end` | TIME | YES | NULL | |
-| `weekly_digest_enabled` | BOOLEAN | NO | `false` | |
-| `weekly_digest_day` | TEXT | YES | NULL | `CHECK` weekday enum in app |
-| `updated_at` | TIMESTAMPTZ | NO | `now()` | |
+| Column                   | Type        | Nullable | Default | Notes                                        |
+| ------------------------ | ----------- | -------- | ------- | -------------------------------------------- |
+| `user_id`                | UUID        | NO       | —       | PK, FK → `users(id)`                         |
+| `push_enabled`           | BOOLEAN     | NO       | `false` |                                              |
+| `daily_reminder_enabled` | BOOLEAN     | NO       | `false` |                                              |
+| `daily_reminder_time`    | TIME        | YES      | NULL    | local interpretation with `timezone` on user |
+| `threshold_percent`      | SMALLINT    | YES      | NULL    | 1–100                                        |
+| `quiet_hours_start`      | TIME        | YES      | NULL    |                                              |
+| `quiet_hours_end`        | TIME        | YES      | NULL    |                                              |
+| `weekly_digest_enabled`  | BOOLEAN     | NO       | `false` |                                              |
+| `weekly_digest_day`      | TEXT        | YES      | NULL    | `CHECK` weekday enum in app                  |
+| `updated_at`             | TIMESTAMPTZ | NO       | `now()` |                                              |
 
 **Constraints:**
 
@@ -183,14 +183,14 @@ One row per user (upsert).
 
 ### 4.6 `push_subscriptions`
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `id` | UUID | NO | `gen_random_uuid()` | PK |
-| `user_id` | UUID | NO | — | FK → `users(id)` |
-| `endpoint` | TEXT | NO | — | long URL |
-| `p256dh` | TEXT | NO | — | from subscription keys |
-| `auth` | TEXT | NO | — | from subscription keys |
-| `created_at` | TIMESTAMPTZ | NO | `now()` | |
+| Column       | Type        | Nullable | Default             | Notes                  |
+| ------------ | ----------- | -------- | ------------------- | ---------------------- |
+| `id`         | UUID        | NO       | `gen_random_uuid()` | PK                     |
+| `user_id`    | UUID        | NO       | —                   | FK → `users(id)`       |
+| `endpoint`   | TEXT        | NO       | —                   | long URL               |
+| `p256dh`     | TEXT        | NO       | —                   | from subscription keys |
+| `auth`       | TEXT        | NO       | —                   | from subscription keys |
+| `created_at` | TIMESTAMPTZ | NO       | `now()`             |                        |
 
 **Constraints:**
 
@@ -205,24 +205,24 @@ One row per user (upsert).
 
 ### 4.7 `report_jobs`
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `id` | UUID | NO | `gen_random_uuid()` | PK |
-| `user_id` | UUID | NO | — | FK → `users(id)` |
-| `status` | TEXT | NO | `'queued'` | `CHECK` in (`queued`,`processing`,`completed`,`failed`) |
-| `report_type` | TEXT | NO | — | e.g. `expense_detail`, `target_vs_actual` |
-| `format` | TEXT | NO | — | `xlsx`, `pdf` |
-| `date_from` | DATE | NO | — | |
-| `date_to` | DATE | NO | — | |
-| `options` | JSONB | NO | `'{}'` | include flags; keep small |
-| `result_url` | TEXT | YES | NULL | signed URL or internal path |
-| `result_expires_at` | TIMESTAMPTZ | YES | NULL | |
-| `error_code` | TEXT | YES | NULL | |
-| `error_message` | TEXT | YES | NULL | user-safe message only |
-| `idempotency_key` | TEXT | YES | NULL | UNIQUE per user when present |
-| `created_at` | TIMESTAMPTZ | NO | `now()` | |
-| `updated_at` | TIMESTAMPTZ | NO | `now()` | |
-| `completed_at` | TIMESTAMPTZ | YES | NULL | |
+| Column              | Type        | Nullable | Default             | Notes                                                   |
+| ------------------- | ----------- | -------- | ------------------- | ------------------------------------------------------- |
+| `id`                | UUID        | NO       | `gen_random_uuid()` | PK                                                      |
+| `user_id`           | UUID        | NO       | —                   | FK → `users(id)`                                        |
+| `status`            | TEXT        | NO       | `'queued'`          | `CHECK` in (`queued`,`processing`,`completed`,`failed`) |
+| `report_type`       | TEXT        | NO       | —                   | e.g. `expense_detail`, `target_vs_actual`               |
+| `format`            | TEXT        | NO       | —                   | `xlsx`, `pdf`                                           |
+| `date_from`         | DATE        | NO       | —                   |                                                         |
+| `date_to`           | DATE        | NO       | —                   |                                                         |
+| `options`           | JSONB       | NO       | `'{}'`              | include flags; keep small                               |
+| `result_url`        | TEXT        | YES      | NULL                | signed URL or internal path                             |
+| `result_expires_at` | TIMESTAMPTZ | YES      | NULL                |                                                         |
+| `error_code`        | TEXT        | YES      | NULL                |                                                         |
+| `error_message`     | TEXT        | YES      | NULL                | user-safe message only                                  |
+| `idempotency_key`   | TEXT        | YES      | NULL                | UNIQUE per user when present                            |
+| `created_at`        | TIMESTAMPTZ | NO       | `now()`             |                                                         |
+| `updated_at`        | TIMESTAMPTZ | NO       | `now()`             |                                                         |
+| `completed_at`      | TIMESTAMPTZ | YES      | NULL                |                                                         |
 
 **Constraints:**
 
@@ -242,12 +242,12 @@ One row per user (upsert).
 
 Stores the **user checkbox** from the **Calendar day sheet** (“met daily target that day”). One row per `(user_id, calendar_date)` when the user has toggled or confirmed at least once; absence of a row means “unset / not checked.”
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `user_id` | UUID | NO | — | FK → `users(id)` |
-| `calendar_date` | DATE | NO | — | **User-local calendar date** (interpret with `users.timezone` when bucketing `occurred_at`) |
-| `target_completed` | BOOLEAN | NO | `false` | User intent: “I met my daily target” |
-| `updated_at` | TIMESTAMPTZ | NO | `now()` | |
+| Column             | Type        | Nullable | Default | Notes                                                                                       |
+| ------------------ | ----------- | -------- | ------- | ------------------------------------------------------------------------------------------- |
+| `user_id`          | UUID        | NO       | —       | FK → `users(id)`                                                                            |
+| `calendar_date`    | DATE        | NO       | —       | **User-local calendar date** (interpret with `users.timezone` when bucketing `occurred_at`) |
+| `target_completed` | BOOLEAN     | NO       | `false` | User intent: “I met my daily target”                                                        |
+| `updated_at`       | TIMESTAMPTZ | NO       | `now()` |                                                                                             |
 
 **Constraints:**
 
@@ -262,14 +262,14 @@ Stores the **user checkbox** from the **Calendar day sheet** (“met daily targe
 
 ### 4.9 `agent_turns` (post-MVP)
 
-| Column | Type | Nullable | Default | Notes |
-|--------|------|----------|---------|--------|
-| `id` | UUID | NO | `gen_random_uuid()` | PK |
-| `user_id` | UUID | NO | — | FK → `users(id)` |
-| `tool_name` | VARCHAR(64) | NO | — | e.g. `createExpense` |
-| `args` | JSONB | NO | — | structured; no PII beyond what’s needed |
-| `result_entity_id` | UUID | YES | NULL | e.g. expense id if created |
-| `created_at` | TIMESTAMPTZ | NO | `now()` | |
+| Column             | Type        | Nullable | Default             | Notes                                   |
+| ------------------ | ----------- | -------- | ------------------- | --------------------------------------- |
+| `id`               | UUID        | NO       | `gen_random_uuid()` | PK                                      |
+| `user_id`          | UUID        | NO       | —                   | FK → `users(id)`                        |
+| `tool_name`        | VARCHAR(64) | NO       | —                   | e.g. `createExpense`                    |
+| `args`             | JSONB       | NO       | —                   | structured; no PII beyond what’s needed |
+| `result_entity_id` | UUID        | YES      | NULL                | e.g. expense id if created              |
+| `created_at`       | TIMESTAMPTZ | NO       | `now()`             |                                         |
 
 **Constraints:**
 
@@ -315,16 +315,16 @@ erDiagram
 
 ## 6. Query patterns and index coverage
 
-| Query | Pattern | Index |
-|-------|---------|--------|
-| Expense list by user + date range | `WHERE user_id = ? AND occurred_at BETWEEN ? AND ? ORDER BY occurred_at DESC` | `(user_id, occurred_at DESC)` |
-| Analytics by category for period | `WHERE user_id = ? AND occurred_at … GROUP BY category_id` | `(user_id, occurred_at)` + join to categories |
-| Today’s spend | same with narrow date range | same |
-| Active budget target | `WHERE user_id = ? AND period = ?` | `UNIQUE (user_id, period)` or `(user_id, period)` |
-| Report job polling | `WHERE user_id = ? AND id = ?` | PK lookup |
-| Push subs for user | `WHERE user_id = ?` | `push_subscriptions(user_id)` |
-| Calendar month rollups | aggregate `expenses` by **local** date + `entry_type`; join `daily_target_day_marks` for checkbox | `(user_id, occurred_at)` + app-side date bucketing; PK on marks |
-| Day detail | `WHERE user_id = ? AND occurred_at` in day window | same |
+| Query                             | Pattern                                                                                           | Index                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Expense list by user + date range | `WHERE user_id = ? AND occurred_at BETWEEN ? AND ? ORDER BY occurred_at DESC`                     | `(user_id, occurred_at DESC)`                                   |
+| Analytics by category for period  | `WHERE user_id = ? AND occurred_at … GROUP BY category_id`                                        | `(user_id, occurred_at)` + join to categories                   |
+| Today’s spend                     | same with narrow date range                                                                       | same                                                            |
+| Active budget target              | `WHERE user_id = ? AND period = ?`                                                                | `UNIQUE (user_id, period)` or `(user_id, period)`               |
+| Report job polling                | `WHERE user_id = ? AND id = ?`                                                                    | PK lookup                                                       |
+| Push subs for user                | `WHERE user_id = ?`                                                                               | `push_subscriptions(user_id)`                                   |
+| Calendar month rollups            | aggregate `expenses` by **local** date + `entry_type`; join `daily_target_day_marks` for checkbox | `(user_id, occurred_at)` + app-side date bucketing; PK on marks |
+| Day detail                        | `WHERE user_id = ? AND occurred_at` in day window                                                 | same                                                            |
 
 Run `EXPLAIN (ANALYZE, BUFFERS)` on production-like data before adding extra indexes.
 
@@ -347,13 +347,13 @@ The product goal is **no paid subscription** for individuals building and runnin
 
 ### 8.1 Recommended $0 stacks (typical patterns)
 
-| Layer | Free-tier option | Why it fits this schema |
-|-------|------------------|-------------------------|
-| **PostgreSQL** | [Neon](https://neon.tech) (serverless), [Supabase](https://supabase.com) (DB + auth optional), [Aiven](https://aiven.io), self-hosted Postgres in Docker | Single database; small footprint if you prune old `report_jobs` and avoid huge JSONB |
-| **Redis (optional)** | [Upstash](https://upstash.com) free tier | BullMQ / rate limits; optional if you use DB-backed queues for minimal MVP |
-| **App hosting** | [Vercel](https://vercel.com) / [Cloudflare Workers](https://workers.cloudflare.com) / [Render](https://render.com) free tiers | API + static PWA |
-| **Object storage for report files** | [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) free allowance, or generate reports **on the fly** and stream without persisting | Keeps DB small; `result_url` short-lived |
-| **Auth** | Supabase Auth free projects, [Clerk](https://clerk.com) dev/free tiers, or **Auth.js** with credentials + your own DB | `auth_subject` maps cleanly |
+| Layer                               | Free-tier option                                                                                                                                         | Why it fits this schema                                                              |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **PostgreSQL**                      | [Neon](https://neon.tech) (serverless), [Supabase](https://supabase.com) (DB + auth optional), [Aiven](https://aiven.io), self-hosted Postgres in Docker | Single database; small footprint if you prune old `report_jobs` and avoid huge JSONB |
+| **Redis (optional)**                | [Upstash](https://upstash.com) free tier                                                                                                                 | BullMQ / rate limits; optional if you use DB-backed queues for minimal MVP           |
+| **App hosting**                     | [Vercel](https://vercel.com) / [Cloudflare Workers](https://workers.cloudflare.com) / [Render](https://render.com) free tiers                            | API + static PWA                                                                     |
+| **Object storage for report files** | [Cloudflare R2](https://www.cloudflare.com/developer-platform/r2/) free allowance, or generate reports **on the fly** and stream without persisting      | Keeps DB small; `result_url` short-lived                                             |
+| **Auth**                            | Supabase Auth free projects, [Clerk](https://clerk.com) dev/free tiers, or **Auth.js** with credentials + your own DB                                    | `auth_subject` maps cleanly                                                          |
 
 ### 8.2 Staying within free limits
 
@@ -370,33 +370,33 @@ Run **PostgreSQL** and the API in **Docker Compose** on a home machine or a free
 
 ## 9. Anti-patterns avoided
 
-| Avoid | Use instead |
-|-------|-------------|
-| `FLOAT` for money | `NUMERIC(14,4)` |
-| Sequential integer PKs for public ids | UUID |
-| Storing PDF/XLSX bytes in `BYTEA` for every job | Object storage or ephemeral stream + short `result_url` TTL |
-| Cascading delete from `categories` to expenses without intent | `ON DELETE RESTRICT` on `expenses.category_id` |
+| Avoid                                                         | Use instead                                                 |
+| ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `FLOAT` for money                                             | `NUMERIC(14,4)`                                             |
+| Sequential integer PKs for public ids                         | UUID                                                        |
+| Storing PDF/XLSX bytes in `BYTEA` for every job               | Object storage or ephemeral stream + short `result_url` TTL |
+| Cascading delete from `categories` to expenses without intent | `ON DELETE RESTRICT` on `expenses.category_id`              |
 
 ---
 
 ## 10. Quality checklist (schema review)
 
-- [ ] All monetary columns use `NUMERIC`, not floating point  
-- [ ] All user-owned rows include `user_id` and FK to `users`  
-- [ ] Foreign keys defined with explicit `ON DELETE` behavior  
-- [ ] List/filter indexes cover `expenses (user_id, occurred_at)`  
-- [ ] Uniqueness rules for categories and budget targets match product rules  
-- [ ] Migrations are additive for rolling deploys  
-- [ ] Free-tier storage strategy documented (prune jobs, no large blobs in DB)  
+- [ ] All monetary columns use `NUMERIC`, not floating point
+- [ ] All user-owned rows include `user_id` and FK to `users`
+- [ ] Foreign keys defined with explicit `ON DELETE` behavior
+- [ ] List/filter indexes cover `expenses (user_id, occurred_at)`
+- [ ] Uniqueness rules for categories and budget targets match product rules
+- [ ] Migrations are additive for rolling deploys
+- [ ] Free-tier storage strategy documented (prune jobs, no large blobs in DB)
 
 ---
 
 ## 11. Document map
 
-| Section | Content |
-|---------|---------|
-| §1–3 | Goals, entities, conventions |
-| §4–5 | Tables and ER diagram |
-| §6–7 | Queries and migrations |
-| §8 | **Zero-cost services** and sizing |
-| §9–10 | Anti-patterns and checklist |
+| Section | Content                           |
+| ------- | --------------------------------- |
+| §1–3    | Goals, entities, conventions      |
+| §4–5    | Tables and ER diagram             |
+| §6–7    | Queries and migrations            |
+| §8      | **Zero-cost services** and sizing |
+| §9–10   | Anti-patterns and checklist       |

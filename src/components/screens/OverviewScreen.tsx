@@ -27,7 +27,10 @@ export function OverviewScreen() {
   const year = now.getFullYear();
   const month = now.getMonth();
 
-  const monthExpenses = useMemo(() => getExpensesForMonth(expenses, year, month), [expenses, year, month]);
+  const monthExpenses = useMemo(
+    () => getExpensesForMonth(expenses, year, month),
+    [expenses, year, month],
+  );
   const todayExpenses = useMemo(() => getExpensesForDate(expenses, today), [expenses, today]);
   const prevMonthExpenses = useMemo(() => {
     const pm = month === 0 ? 11 : month - 1;
@@ -53,7 +56,14 @@ export function OverviewScreen() {
     return Array.from(map.entries())
       .map(([catId, amount]) => {
         const cat = categories.find((c) => c.id === catId);
-        return { catId, name: cat?.name || "Unknown", icon: cat?.icon || "📦", color: cat?.color || "#6b7280", amount, pct: monthTotal > 0 ? (amount / monthTotal) * 100 : 0 };
+        return {
+          catId,
+          name: cat?.name || "Unknown",
+          icon: cat?.icon || "📦",
+          color: cat?.color || "#6b7280",
+          amount,
+          pct: monthTotal > 0 ? (amount / monthTotal) * 100 : 0,
+        };
       })
       .sort((a, b) => b.amount - a.amount);
   }, [monthExpenses, categories, monthTotal]);
@@ -64,17 +74,16 @@ export function OverviewScreen() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const dayOfMonth = now.getDate();
   const daysLeft = daysInMonth - dayOfMonth;
-  const burnRate = monthlyTarget && monthlyTarget.amount > monthTotal && daysLeft > 0
-    ? (monthlyTarget.amount - monthTotal) / daysLeft
-    : null;
+  const burnRate =
+    monthlyTarget && monthlyTarget.amount > monthTotal && daysLeft > 0
+      ? (monthlyTarget.amount - monthTotal) / daysLeft
+      : null;
 
   return (
     <div className="mx-auto max-w-lg px-4 pt-6">
       <header className="mb-6">
         <p className="text-sm font-medium text-muted-foreground">Good {getGreeting()}</p>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {monthName} Overview
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{monthName} Overview</h1>
       </header>
 
       {/* Month total card */}
@@ -99,7 +108,15 @@ export function OverviewScreen() {
             ) : (
               <Minus className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className={delta > 0 ? "text-status-over" : delta < 0 ? "text-status-safe" : "text-muted-foreground"}>
+            <span
+              className={
+                delta > 0
+                  ? "text-status-over"
+                  : delta < 0
+                    ? "text-status-safe"
+                    : "text-muted-foreground"
+              }
+            >
               {Math.abs(delta).toFixed(1)}% vs last month
             </span>
           </div>
@@ -118,7 +135,10 @@ export function OverviewScreen() {
       ) : (
         <div className="mb-4 rounded-2xl bg-card p-4 shadow-sm border border-border/50">
           <p className="text-sm text-muted-foreground">
-            Today: <span className="font-semibold text-foreground">{formatCurrency(todayTotal, settings.currency)}</span>
+            Today:{" "}
+            <span className="font-semibold text-foreground">
+              {formatCurrency(todayTotal, settings.currency)}
+            </span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Set a daily spending cap in Settings or Notes to compare spending here.
@@ -136,7 +156,8 @@ export function OverviewScreen() {
           <BudgetBar spent={monthTotal} limit={monthlyTarget.amount} currency={settings.currency} />
           {burnRate !== null && (
             <p className="mt-2 text-xs text-muted-foreground">
-              ~{formatCurrency(burnRate, settings.currency)}/day to stay on track ({daysLeft} days left)
+              ~{formatCurrency(burnRate, settings.currency)}/day to stay on track ({daysLeft} days
+              left)
             </p>
           )}
         </div>
