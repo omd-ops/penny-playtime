@@ -65,6 +65,10 @@ export interface AppSettings {
   dailyUpdateRemindersEnabled?: boolean;
   /** Local wall-clock times in 24h `HH:mm` format. */
   dailyUpdateReminderTimes?: string[];
+  /** Custom Gemini API key for the AI agent */
+  aiApiKey?: string;
+  /** Custom Gemini model name for the AI agent */
+  aiModelName?: string;
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
