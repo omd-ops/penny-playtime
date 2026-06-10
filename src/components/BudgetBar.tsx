@@ -1,54 +1,87 @@
-import { cn } from "@/lib/utils";
-import { getBudgetStatus, formatCurrency } from "@/lib/store";
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { formatCurrency, getBudgetStatus } from "../lib/store";
 
 interface BudgetBarProps {
   spent: number;
   limit: number;
   currency: string;
-  label?: string;
-  showRemaining?: boolean;
+  isDark?: boolean;
 }
 
-export function BudgetBar({ spent, limit, currency, label, showRemaining = true }: BudgetBarProps) {
+export function BudgetBar({ spent, limit, currency, isDark }: BudgetBarProps) {
+  if (limit <= 0) return null;
+  const pct = Math.min((spent / limit) * 100, 100);
   const status = getBudgetStatus(spent, limit);
-  const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
-  const remaining = limit - spent;
+
+  let barColor = "#10b981"; // Safe
+  if (status === "warning") barColor = "#f59e0b"; // Warning
+  if (status === "over") barColor = "#ef4444"; // Over
+
+  const remaining = Math.max(limit - spent, 0);
 
   return (
-    <div className="space-y-1.5">
-      {label && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-foreground">{label}</span>
-          <span className="text-muted-foreground">
-            {formatCurrency(spent, currency)} / {formatCurrency(limit, currency)}
-          </span>
-        </div>
-      )}
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-500",
-            status === "safe" && "bg-status-safe",
-            status === "warning" && "bg-status-warning",
-            status === "over" && "bg-status-over",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      {showRemaining && limit > 0 && (
-        <p
-          className={cn(
-            "text-xs font-medium",
-            status === "safe" && "text-status-safe",
-            status === "warning" && "text-status-warning-foreground",
-            status === "over" && "text-status-over",
-          )}
-        >
-          {remaining >= 0
-            ? `${formatCurrency(remaining, currency)} remaining`
-            : `${formatCurrency(Math.abs(remaining), currency)} over budget`}
-        </p>
-      )}
-    </div>
+    <View style={styles.container}>
+      <View style={styles.progressContainer}>
+        <View style={[styles.progressBarBg, isDark && styles.progressBarBgDark]}>
+          <View style={[styles.progressBarFill, { width: `${pct}%`, backgroundColor: barColor }]} />
+        </View>
+      </View>
+      <View style={styles.labelContainer}>
+        <Text style={[styles.textLeft, isDark ? styles.textDark : styles.textLight]}>
+          {formatCurrency(spent, currency)} of {formatCurrency(limit, currency)}
+        </Text>
+        <Text style={[styles.textRight, isDark ? styles.textDark : styles.textLight, status === "over" && styles.overText]}>
+          {status === "over" ? "Over budget" : `${formatCurrency(remaining, currency)} left`}
+        </Text>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginVertical: 4,
+    width: "100%",
+  },
+  progressContainer: {
+    height: 10,
+    width: "100%",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressBarBg: {
+    flex: 1,
+    backgroundColor: "#e2e8f0",
+  },
+  progressBarBgDark: {
+    backgroundColor: "#334155",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  labelContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  textLeft: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  textRight: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  textLight: {
+    color: "#64748b",
+  },
+  textDark: {
+    color: "#94a3b8",
+  },
+  overText: {
+    color: "#ef4444",
+    fontWeight: "600",
+  },
+});

@@ -1,42 +1,83 @@
-"use client";
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Wallet, List, Calendar, FileText, Settings } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Receipt, CalendarDays, StickyNote, Settings } from "lucide-react";
+export type ScreenTab = "overview" | "expenses" | "calendar" | "notes" | "settings";
 
-const tabs = [
-  { href: "/", icon: Home, label: "Overview" },
-  { href: "/expenses", icon: Receipt, label: "Expenses" },
-  { href: "/calendar", icon: CalendarDays, label: "Calendar" },
-  { href: "/notes", icon: StickyNote, label: "Notes" },
-  { href: "/settings", icon: Settings, label: "Settings" },
-] as const;
+interface BottomNavProps {
+  activeTab: ScreenTab;
+  onChangeTab: (tab: ScreenTab) => void;
+  isDark: boolean;
+}
 
-export function BottomNav() {
-  const pathname = usePathname();
+export function BottomNav({ activeTab, onChangeTab, isDark }: BottomNavProps) {
+  const tabs = [
+    { id: "overview" as const, label: "Overview", icon: Wallet },
+    { id: "expenses" as const, label: "Expenses", icon: List },
+    { id: "calendar" as const, label: "Calendar", icon: Calendar },
+    { id: "notes" as const, label: "Notes", icon: FileText },
+    { id: "settings" as const, label: "Settings", icon: Settings },
+  ];
+
+  const themeColors = {
+    bg: isDark ? "#1e293b" : "#ffffff",
+    border: isDark ? "#334155" : "#e2e8f0",
+    active: "#10b981",
+    inactive: isDark ? "#64748b" : "#94a3b8",
+  };
+
+  const handlePress = (tabId: ScreenTab) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onChangeTab(tabId);
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur-md safe-area-bottom">
-      <div className="mx-auto flex h-16 max-w-lg items-center justify-between gap-0.5 px-1 sm:px-2">
-        {tabs.map((tab) => {
-          const active =
-            tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium transition-colors sm:text-xs ${
-                active
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <tab.icon className={`h-5 w-5 ${active ? "stroke-[2.5]" : ""}`} />
-              <span>{tab.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    <View style={[styles.navContainer, { backgroundColor: themeColors.bg, borderTopColor: themeColors.border }]}>
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        const Icon = tab.icon;
+        return (
+          <TouchableOpacity
+            key={tab.id}
+            onPress={() => handlePress(tab.id)}
+            style={styles.tabBtn}
+            activeOpacity={0.8}
+          >
+            <Icon size={20} color={isActive ? themeColors.active : themeColors.inactive} />
+            <Text style={[styles.tabLabel, { color: isActive ? themeColors.active : themeColors.inactive }]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  navContainer: {
+    flexDirection: "row",
+    height: 72,
+    borderTopWidth: 1,
+    paddingBottom: 16,
+    paddingTop: 10,
+    justifyContent: "space-around",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 10,
+  },
+  tabBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+});

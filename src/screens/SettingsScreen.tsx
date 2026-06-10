@@ -111,9 +111,9 @@ export function SettingsScreen({ isDark, setAppTheme }: ScreenProps) {
           sound: true,
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour: hours,
           minute: minutes,
-          repeats: true,
         },
       });
     }

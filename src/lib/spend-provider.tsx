@@ -82,13 +82,13 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
   // Sync to local AsyncStorage
   const writeLocalSnapshot = async (s: GlobalState) => {
     try {
-      await AsyncStorage.multiSet([
-        [LS.categories, JSON.stringify(s.categories)],
-        [LS.expenses, JSON.stringify(s.expenses)],
-        [LS.targets, JSON.stringify(s.budgetTargets)],
-        [LS.dayflags, JSON.stringify(s.dayFlags)],
-        [LS.daygoals, JSON.stringify(s.dayGoals)],
-        [LS.settings, JSON.stringify(s.settings)],
+      await Promise.all([
+        AsyncStorage.setItem(LS.categories, JSON.stringify(s.categories)),
+        AsyncStorage.setItem(LS.expenses, JSON.stringify(s.expenses)),
+        AsyncStorage.setItem(LS.targets, JSON.stringify(s.budgetTargets)),
+        AsyncStorage.setItem(LS.dayflags, JSON.stringify(s.dayFlags)),
+        AsyncStorage.setItem(LS.daygoals, JSON.stringify(s.dayGoals)),
+        AsyncStorage.setItem(LS.settings, JSON.stringify(s.settings)),
       ]);
     } catch (err) {
       console.error("Failed to save snapshot to AsyncStorage:", err);
@@ -210,27 +210,18 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
       // 1. Read local storage first for instant loading
       let local: GlobalState = { ...INITIAL_STATE };
       try {
-        const keys = [
-          LS.categories,
-          LS.expenses,
-          LS.targets,
-          LS.dayflags,
-          LS.daygoals,
-          LS.settings,
-        ];
-        const stores = await AsyncStorage.multiGet(keys);
-        const read = (index: number, fallback: any) => {
-          const val = stores[index][1];
-          return val ? JSON.parse(val) : fallback;
+        const read = async <T,>(key: string, fallback: T): Promise<T> => {
+          const raw = await AsyncStorage.getItem(key);
+          return raw ? (JSON.parse(raw) as T) : fallback;
         };
 
         local = {
-          categories: read(0, DEFAULT_CATEGORIES),
-          expenses: read(1, []),
-          budgetTargets: read(2, []),
-          dayFlags: read(3, []),
-          dayGoals: read(4, []),
-          settings: read(5, DEFAULT_SETTINGS),
+          categories: await read(LS.categories, DEFAULT_CATEGORIES),
+          expenses: await read(LS.expenses, []),
+          budgetTargets: await read(LS.targets, []),
+          dayFlags: await read(LS.dayflags, []),
+          dayGoals: await read(LS.daygoals, []),
+          settings: await read(LS.settings, DEFAULT_SETTINGS),
         };
 
         if (active) {

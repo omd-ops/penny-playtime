@@ -1,4 +1,4 @@
-// Types and pure helpers for SpendWise. Runtime state lives in `spend-data-provider.tsx` (Supabase + localStorage).
+// Core models and helper functions for Penny Pay. Pure business logic.
 
 export interface Category {
   id: string;
@@ -25,13 +25,10 @@ export interface BudgetTarget {
 
 export interface DayFlag {
   date: string; // YYYY-MM-DD
-  /** User checked off their **daily habits / tasks** for this day (not spending). Field name kept for storage compatibility. */
   metTarget: boolean;
-  /** Custom label for the habits row (e.g. “Gym + wake 7am”). Omit to use default copy. */
   label?: string;
 }
 
-/** User-defined goals for a calendar day (in addition to the default daily-target checkbox). */
 export interface DayGoal {
   id: string;
   date: string; // YYYY-MM-DD
@@ -44,30 +41,20 @@ export interface ImportantNoteItem {
   text: string;
 }
 
-/** Habit tabs on the Notes tab (daily uses `dailyHabitItems`; others use `habitPlans` text). */
 export type HabitPlanPeriod = "daily" | "weekly" | "monthly" | "yearly";
-
-/** Longer-form habit notes for weekly / monthly / yearly only. */
 export type HabitPlanTextPeriod = "weekly" | "monthly" | "yearly";
 
 export interface AppSettings {
   currency: string;
   theme: "light" | "dark" | "system";
-  /** Scratchpad shown on the Notes tab; synced with other settings. */
   notes?: string;
-  /** Bullet lines for the **daily** habit plan (shown on every calendar day). */
   dailyHabitItems?: ImportantNoteItem[];
-  /** Free text for weekly / monthly / yearly habit plans on the Notes tab. */
   habitPlans?: Partial<Record<HabitPlanTextPeriod, string>>;
-  /** Bullet-style notes on the Notes tab; `notes` is kept in sync as newline-joined text for older snapshots. */
   importantNoteItems?: ImportantNoteItem[];
-  /** Browser notifications nudging the user to log daily updates (expenses, calendar, habits). */
   dailyUpdateRemindersEnabled?: boolean;
-  /** Local wall-clock times in 24h `HH:mm` format. */
   dailyUpdateReminderTimes?: string[];
 }
 
-/** Keep in sync with the duplicate list in `spend-data-provider.tsx` (avoids circular imports). */
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "food", name: "Food & Drinks", color: "#10b981", icon: "🍔" },
   { id: "transport", name: "Transport", color: "#3b82f6", icon: "🚌" },
@@ -98,7 +85,6 @@ export function isValidReminderTime(s: string): boolean {
   return HH_MM.test(s.trim());
 }
 
-/** Dedupe, validate, sort; falls back to defaults if nothing valid remains. */
 export function normalizeDailyReminderTimes(times: string[] | undefined): string[] {
   if (!times?.length) return [...DEFAULT_DAILY_REMINDER_TIMES];
   const valid = times.map((t) => t.trim()).filter(isValidReminderTime);
@@ -137,7 +123,6 @@ export function sumExpenses(expenses: Expense[]) {
   return expenses.reduce((s, e) => s + e.amount, 0);
 }
 
-/** Outflows (spend). Missing `type` is treated as cash-out for older localStorage rows. */
 export function isExpenseDebit(e: Expense): boolean {
   return e.type !== "cash-in";
 }
