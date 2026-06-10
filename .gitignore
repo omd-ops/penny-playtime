@@ -37,3 +37,7 @@ out
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase temp files
+supabase/.temp/
+supabase/.branches/
