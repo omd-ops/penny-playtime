@@ -31,6 +31,7 @@ Supported Categories for Expenses/Income:
 - "entertainment" (Entertainment, movie, netflix, game, gig, concert, theater, party)
 - "health" (Health, medicine, doctor, dentist, gym membership, clinic, pharmacy)
 - "education" (Education, tuition, book, course, class, school fees)
+- "salary" (Salary, income, paycheck, wage, earnings, bonus)
 - "other" (Other, general, cash withdrawal, everything else)
 
 Rules for Date Extraction:
@@ -88,6 +89,7 @@ const responseSchema: any = {
             "entertainment",
             "health",
             "education",
+            "salary",
             "other",
           ],
         },

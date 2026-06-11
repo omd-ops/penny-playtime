@@ -31,6 +31,7 @@ export interface DayFlag {
   label?: string;
   importance?: string;
   emoji?: string;
+  completedHabitIds?: string[];
 }
 
 /** User-defined goals for a calendar day (in addition to the default daily-target checkbox). */
@@ -81,6 +82,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "entertainment", name: "Entertainment", color: "#8b5cf6", icon: "🎬" },
   { id: "health", name: "Health", color: "#ec4899", icon: "💊" },
   { id: "education", name: "Education", color: "#06b6d4", icon: "📚" },
+  { id: "salary", name: "Salary", color: "#22c55e", icon: "🤑" },
   { id: "other", name: "Other", color: "#6b7280", icon: "📦" },
 ];
 

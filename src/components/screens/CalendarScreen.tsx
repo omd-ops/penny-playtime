@@ -55,10 +55,6 @@ export function CalendarScreen() {
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [dayTargetNote, setDayTargetNote] = useState(DEFAULT_DAY_TARGET_LABEL);
-  const dayTargetNoteRef = useRef(dayTargetNote);
-  dayTargetNoteRef.current = dayTargetNote;
-
   const [importanceText, setImportanceText] = useState("");
   const [emojiText, setEmojiText] = useState("");
 
@@ -144,39 +140,32 @@ export function CalendarScreen() {
 
   useEffect(() => {
     if (!selectedDate) return;
-    const t = selFlag?.label?.trim();
-    setDayTargetNote(t ? t : DEFAULT_DAY_TARGET_LABEL);
     setImportanceText(selFlag?.importance || "");
     setEmojiText(selFlag?.emoji || "");
   }, [selectedDate, selFlag?.label, selFlag?.importance, selFlag?.emoji]);
 
-  function labelFromNoteDraft(): string | undefined {
-    const raw = dayTargetNoteRef.current.trim();
-    if (raw === "" || raw === DEFAULT_DAY_TARGET_LABEL) return undefined;
-    return raw;
-  }
-
-  function commitFlagLabel() {
+  function toggleGlobalHabit(habitId: string) {
     if (!selectedDate) return;
-    const labelToStore = labelFromNoteDraft();
-
     setDayFlags((prev) => {
       const idx = prev.findIndex((f) => f.date === selectedDate);
       if (idx < 0) {
-        if (labelToStore === undefined) return prev;
-        return [...prev, { date: selectedDate, metTarget: false, label: labelToStore }];
+        return [
+          ...prev,
+          {
+            date: selectedDate,
+            metTarget: false,
+            completedHabitIds: [habitId],
+          },
+        ];
       }
       const cur = prev[idx];
-      const next = { ...cur, label: labelToStore };
-      if (
-        !next.metTarget &&
-        next.label === undefined &&
-        !next.importance?.trim() &&
-        !next.emoji?.trim()
-      ) {
-        return prev.filter((f) => f.date !== selectedDate);
-      }
-      return prev.map((f) => (f.date === selectedDate ? next : f));
+      const completed = cur.completedHabitIds || [];
+      const nextCompleted = completed.includes(habitId)
+        ? completed.filter((id) => id !== habitId)
+        : [...completed, habitId];
+      return prev.map((f) =>
+        f.date === selectedDate ? { ...f, completedHabitIds: nextCompleted } : f,
+      );
     });
   }
 
@@ -210,10 +199,8 @@ export function CalendarScreen() {
     });
   }
 
-  function toggleFlag() {
+  function toggleAllHabits() {
     if (!selectedDate) return;
-    const extraLabel = labelFromNoteDraft();
-
     setDayFlags((prev) => {
       const exists = prev.find((f) => f.date === selectedDate);
       if (exists) {
@@ -224,7 +211,6 @@ export function CalendarScreen() {
         {
           date: selectedDate,
           metTarget: true,
-          ...(extraLabel ? { label: extraLabel } : {}),
           ...(importanceText.trim() ? { importance: importanceText.trim() } : {}),
           ...(emojiText.trim() ? { emoji: emojiText.trim() } : {}),
         },
@@ -297,7 +283,8 @@ export function CalendarScreen() {
           const isToday = cell.dateStr === today;
           const flag = flagMap.get(cell.dateStr);
           const goalsForDay = goalsMap.get(cell.dateStr) ?? [];
-          const anyCustomGoalDone = goalsForDay.some((g) => g.done);
+          const completedGlobalCount = flag?.completedHabitIds?.length ?? 0;
+          const anyCustomGoalDone = goalsForDay.some((g) => g.done) || completedGlobalCount > 0;
 
           const hasHabitLines = dailyHabitLines.length > 0;
           const ariaParts = [
@@ -444,49 +431,83 @@ export function CalendarScreen() {
                 </div>
               )}
 
-              {/* Daily habits / tasks (editable) + add extra goals */}
-              <div className="flex w-full items-stretch gap-2 rounded-xl bg-card border border-border/50 p-2 min-h-[44px]">
-                <button
-                  type="button"
-                  onClick={toggleFlag}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg min-h-[44px] min-w-[44px]"
-                  aria-pressed={selFlag?.metTarget ?? false}
-                  aria-label="Toggle daily habits done"
-                >
-                  <div
-                    className={cn(
-                      "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
-                      selFlag?.metTarget
-                        ? "bg-status-safe border-status-safe"
-                        : "border-muted-foreground",
-                    )}
+              {/* Daily Plan Checklists & Add Goal */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between pb-1">
+                  <span className="text-sm font-semibold text-foreground">Daily tasks</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1 rounded-lg text-muted-foreground hover:text-foreground"
+                    onClick={addDayGoal}
+                    aria-label="Add custom goal for this day"
                   >
-                    {selFlag?.metTarget && (
-                      <Check className="h-4 w-4 text-status-safe-foreground" />
-                    )}
+                    <Plus className="h-4 w-4" />
+                    <span>Add</span>
+                  </Button>
+                </div>
+
+                {/* Render global daily habits */}
+                {(settings.dailyHabitItems ?? []).map((habit) => {
+                  const isDone = selFlag?.completedHabitIds?.includes(habit.id) || false;
+                  return (
+                    <div
+                      key={habit.id}
+                      className="flex w-full items-stretch gap-2 rounded-xl bg-card border border-border/50 p-2 min-h-[44px]"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleGlobalHabit(habit.id)}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg min-h-[44px] min-w-[44px]"
+                        aria-pressed={isDone}
+                        aria-label={`Mark habit done: ${habit.text}`}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
+                            isDone
+                              ? "bg-status-safe border-status-safe"
+                              : "border-muted-foreground",
+                          )}
+                        >
+                          {isDone && <Check className="h-4 w-4 text-status-safe-foreground" />}
+                        </div>
+                      </button>
+                      <div className="flex flex-1 items-center px-2">
+                        <span className="text-sm font-medium text-foreground">{habit.text}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Fallback legacy checkbox if no global habits but legacy exists */}
+                {!settings.dailyHabitItems?.length && selFlag?.label && (
+                  <div className="flex w-full items-stretch gap-2 rounded-xl bg-card border border-border/50 p-2 min-h-[44px]">
+                    <button
+                      type="button"
+                      onClick={toggleAllHabits}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg min-h-[44px] min-w-[44px]"
+                      aria-pressed={selFlag?.metTarget ?? false}
+                    >
+                      <div
+                        className={cn(
+                          "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
+                          selFlag?.metTarget
+                            ? "bg-status-safe border-status-safe"
+                            : "border-muted-foreground",
+                        )}
+                      >
+                        {selFlag?.metTarget && (
+                          <Check className="h-4 w-4 text-status-safe-foreground" />
+                        )}
+                      </div>
+                    </button>
+                    <div className="flex flex-1 items-center px-2">
+                      <span className="text-sm font-medium text-foreground">{selFlag.label}</span>
+                    </div>
                   </div>
-                </button>
-                <Input
-                  value={dayTargetNote}
-                  onChange={(e) => setDayTargetNote(e.target.value)}
-                  onBlur={commitFlagLabel}
-                  className="h-11 min-h-[44px] flex-1 border-0 bg-transparent px-2 text-sm font-medium shadow-none focus-visible:ring-1"
-                  placeholder={DEFAULT_DAY_TARGET_LABEL}
-                  aria-label="Daily habits description"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-11 w-11 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addDayGoal();
-                  }}
-                  aria-label="Add another goal for this day"
-                >
-                  <Plus className="h-5 w-5" strokeWidth={2.25} />
-                </Button>
+                )}
               </div>
 
               {goalsForSelected.length > 0 && (
