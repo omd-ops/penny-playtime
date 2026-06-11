@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useExpenses, useCategories, useBudgetTargets, useSettings } from "@/lib/spend-store";
 import {
   getExpensesForMonth,
   getExpensesForDate,
+  getExpensesForYear,
   sumDebits,
   isExpenseDebit,
   getTargetForPeriod,
@@ -23,7 +24,7 @@ export function OverviewScreen() {
   const [settings] = useSettings();
 
   const today = todayStr();
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const year = now.getFullYear();
   const month = now.getMonth();
 
@@ -46,6 +47,105 @@ export function OverviewScreen() {
   const monthlyTarget = getTargetForPeriod(targets, "monthly");
 
   const delta = prevMonthTotal > 0 ? ((monthTotal - prevMonthTotal) / prevMonthTotal) * 100 : 0;
+
+  // Tab-based visual representation of spends (weekly, monthly, yearly)
+  const [periodTab, setPeriodTab] = useState<"weekly" | "monthly" | "yearly">("weekly");
+
+  // Calculations for Weekly (last 7 days rolling)
+  const last7DaysData = useMemo(() => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dayName = d.toLocaleDateString("default", { weekday: "short" });
+      const dayExpenses = expenses.filter((e) => e.date === dateStr && isExpenseDebit(e));
+      const total = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+      data.push({ label: dayName, amount: total, dateStr });
+    }
+    return data;
+  }, [expenses]);
+
+  const weeklyTotal = useMemo(
+    () => last7DaysData.reduce((sum, d) => sum + d.amount, 0),
+    [last7DaysData],
+  );
+  const weeklyTargetAmount = dailyTarget ? dailyTarget.amount * 7 : 0;
+
+  // Calculations for Monthly (last 6 months rolling)
+  const last6MonthsData = useMemo(() => {
+    const data = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const yearVal = d.getFullYear();
+      const monthVal = d.getMonth();
+      const monthName = d.toLocaleString("default", { month: "short" });
+      const monthExpenses = getExpensesForMonth(expenses, yearVal, monthVal);
+      const total = sumDebits(monthExpenses);
+      data.push({ label: monthName, amount: total, year: yearVal, month: monthVal });
+    }
+    return data;
+  }, [expenses]);
+
+  const monthlyTargetAmount = monthlyTarget ? monthlyTarget.amount : 0;
+
+  // Calculations for Yearly (last 3 years rolling)
+  const last3YearsData = useMemo(() => {
+    const data = [];
+    const currentYear = now.getFullYear();
+    for (let i = 2; i >= 0; i--) {
+      const targetYear = currentYear - i;
+      const yearExpenses = getExpensesForYear(expenses, targetYear);
+      const total = sumDebits(yearExpenses);
+      data.push({ label: String(targetYear), amount: total, year: targetYear });
+    }
+    return data;
+  }, [expenses, now]);
+
+  const yearlyTarget = getTargetForPeriod(targets, "yearly");
+  const yearlyTargetAmount = yearlyTarget ? yearlyTarget.amount : 0;
+  const yearlyTotal = useMemo(() => {
+    const currentYear = now.getFullYear();
+    return sumDebits(getExpensesForYear(expenses, currentYear));
+  }, [expenses, now]);
+
+  // Bind values dynamically based on selected tab
+  const { chartData, totalSpent, targetAmount } = useMemo(() => {
+    switch (periodTab) {
+      case "weekly":
+        return {
+          chartData: last7DaysData,
+          totalSpent: weeklyTotal,
+          targetAmount: weeklyTargetAmount,
+        };
+      case "monthly":
+        return {
+          chartData: last6MonthsData,
+          totalSpent: monthTotal,
+          targetAmount: monthlyTargetAmount,
+        };
+      case "yearly":
+        return {
+          chartData: last3YearsData,
+          totalSpent: yearlyTotal,
+          targetAmount: yearlyTargetAmount,
+        };
+    }
+  }, [
+    periodTab,
+    last7DaysData,
+    weeklyTotal,
+    weeklyTargetAmount,
+    last6MonthsData,
+    monthTotal,
+    monthlyTargetAmount,
+    last3YearsData,
+    yearlyTotal,
+    yearlyTargetAmount,
+  ]);
+
+  const pctCompletion = targetAmount > 0 ? (totalSpent / targetAmount) * 100 : 0;
 
   const categoryBreakdown = useMemo(() => {
     const map = new Map<string, number>();
@@ -162,6 +262,88 @@ export function OverviewScreen() {
           )}
         </div>
       )}
+
+      {/* Visual Spending Trends Card */}
+      <div className="mb-4 rounded-2xl bg-card p-5 shadow-sm border border-border/50">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-foreground">Spending Trends</h2>
+          <div className="flex gap-1 bg-muted p-1 rounded-lg">
+            {(["weekly", "monthly", "yearly"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setPeriodTab(tab)}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors capitalize ${
+                  periodTab === tab
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Visual Bar Chart */}
+        <div className="flex h-36 items-end justify-between px-2 pt-6 relative border-b border-border/50 pb-2">
+          {chartData.map((d, idx) => {
+            const maxAmount = Math.max(...chartData.map((item) => item.amount), 1);
+            const heightPct = (d.amount / maxAmount) * 100;
+            return (
+              <div key={idx} className="flex flex-1 flex-col items-center gap-1.5 group relative">
+                {/* Tooltip on hover */}
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-1 bg-popover text-popover-foreground text-[10px] px-2 py-0.5 rounded border border-border/50 shadow-sm pointer-events-none z-10 font-mono whitespace-nowrap">
+                  {formatCurrency(d.amount, settings.currency)}
+                </div>
+                {/* Bar */}
+                <div className="w-7 bg-muted/40 dark:bg-muted/15 rounded-t-md overflow-hidden h-24 flex items-end">
+                  <div
+                    className="w-full bg-primary/75 group-hover:bg-primary rounded-t-md transition-all duration-300 ease-out"
+                    style={{ height: `${heightPct}%` }}
+                  />
+                </div>
+                {/* Label */}
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {d.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Target Completion Progress */}
+        {targetAmount > 0 ? (
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                {periodTab} Target Completion
+              </span>
+              <span className="text-xs font-semibold text-foreground">
+                {formatCurrency(totalSpent, settings.currency)} /{" "}
+                {formatCurrency(targetAmount, settings.currency)}
+              </span>
+            </div>
+            <BudgetBar spent={totalSpent} limit={targetAmount} currency={settings.currency} />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {pctCompletion >= 100 ? (
+                <span className="text-status-over font-medium">⚠️ Budget limit reached</span>
+              ) : (
+                <span>
+                  You have used{" "}
+                  <strong className="text-foreground">{pctCompletion.toFixed(0)}%</strong> of your
+                  target limit.
+                </span>
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 text-center">
+            <p className="text-xs text-muted-foreground">
+              No budget cap set for this period. Set one in Settings to track completion.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Category breakdown */}
       <div className="mb-4 rounded-2xl bg-card p-4 shadow-sm border border-border/50">

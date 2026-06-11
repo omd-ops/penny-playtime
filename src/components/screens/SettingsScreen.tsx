@@ -344,7 +344,6 @@ export function SettingsScreen() {
               label: "Reports & Export",
               desc: "Download Excel, PDF, and CSV",
             },
-            { icon: Search, label: "Search & Filter", desc: "Find expenses by date and category" },
           ].map((item) => (
             <div
               key={item.label}
