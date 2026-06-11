@@ -29,6 +29,8 @@ export interface DayFlag {
   metTarget: boolean;
   /** Custom label for the habits row (e.g. “Gym + wake 7am”). Omit to use default copy. */
   label?: string;
+  importance?: string;
+  emoji?: string;
 }
 
 /** User-defined goals for a calendar day (in addition to the default daily-target checkbox). */

@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  useCategories,
   useExpenses,
   useDayFlags,
   useDayGoals,
@@ -84,6 +85,14 @@ interface AgentResponse {
     | "add_important_note"
     | "add_reminder_time"
     | "set_budget_target"
+    | "delete_expense"
+    | "delete_income"
+    | "delete_day_goal"
+    | "delete_habit_plan"
+    | "delete_important_note"
+    | "delete_reminder_time"
+    | "add_category"
+    | "delete_category"
     | "unsupported";
   confidence: number;
   data: {
@@ -96,6 +105,9 @@ interface AgentResponse {
     title?: string;
     time?: string;
     period?: "daily" | "monthly" | "yearly";
+    categoryName?: string;
+    categoryColor?: string;
+    categoryIcon?: string;
   };
   explanation: string;
 }
@@ -109,6 +121,9 @@ const SUGGESTED_PROMPTS = [
   "Set daily reminder at 8:30 PM",
   "Add gym workout to my daily habits plan",
   "Add goal buy fresh milk for tomorrow",
+  "Delete the food expense from today",
+  "Delete the 8:30 PM reminder",
+  "Add a new category for Pets",
 ];
 
 export function AIAgent() {
@@ -120,6 +135,7 @@ export function AIAgent() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   // SpendWise global state hooks
+  const [categories, setCategories] = useCategories();
   const [, setExpenses] = useExpenses();
   const [, setDayFlags] = useDayFlags();
   const [, setDayGoals] = useDayGoals();
@@ -367,6 +383,163 @@ export function AIAgent() {
           break;
         }
 
+        case "delete_expense":
+        case "delete_income": {
+          const t = intent === "delete_income" ? "cash-in" : "cash-out";
+          const date = data.date || todayStr();
+          let deleted = false;
+          setExpenses((prev) => {
+            const matchIndex = prev.findIndex(
+              (e) =>
+                e.date === date &&
+                (e.type === t || (!e.type && t === "cash-out")) &&
+                (data.amount ? e.amount === data.amount : true) &&
+                (data.categoryId ? e.categoryId === data.categoryId : true),
+            );
+            if (matchIndex === -1) {
+              toast.error(`No matching ${t} found to delete on ${date}`);
+              return prev;
+            }
+            deleted = true;
+            toast.success(`Deleted ${t} record for ${date}`);
+            const newExpenses = [...prev];
+            newExpenses.splice(matchIndex, 1);
+            return newExpenses;
+          });
+          if (!deleted) throw new Error("Deletion aborted");
+          break;
+        }
+
+        case "delete_day_goal": {
+          const date = data.date || todayStr();
+          const title = data.title || "";
+          let deleted = false;
+          setDayGoals((prev) => {
+            const matchIndex = prev.findIndex(
+              (g) =>
+                g.date === date && (!title || g.title.toLowerCase().includes(title.toLowerCase())),
+            );
+            if (matchIndex === -1) {
+              toast.error("No matching goal found to delete");
+              return prev;
+            }
+            deleted = true;
+            toast.success(`Deleted goal: "${prev[matchIndex].title}"`);
+            const next = [...prev];
+            next.splice(matchIndex, 1);
+            return next;
+          });
+          if (!deleted) throw new Error("Deletion aborted");
+          break;
+        }
+
+        case "delete_habit_plan": {
+          const text = data.text || "";
+          let deleted = false;
+          setSettings((prev) => {
+            const items = prev.dailyHabitItems || [];
+            const matchIndex = items.findIndex((i) =>
+              i.text.toLowerCase().includes(text.toLowerCase()),
+            );
+            if (matchIndex === -1) {
+              toast.error("No matching habit found to delete");
+              return prev;
+            }
+            deleted = true;
+            toast.success("Deleted habit");
+            const nextItems = [...items];
+            nextItems.splice(matchIndex, 1);
+            return { ...prev, dailyHabitItems: nextItems };
+          });
+          if (!deleted) throw new Error("Deletion aborted");
+          break;
+        }
+
+        case "delete_important_note": {
+          const text = data.text || "";
+          let deleted = false;
+          setSettings((prev) => {
+            const items = prev.importantNoteItems || [];
+            const matchIndex = items.findIndex((i) =>
+              i.text.toLowerCase().includes(text.toLowerCase()),
+            );
+            if (matchIndex === -1) {
+              toast.error("No matching note found to delete");
+              return prev;
+            }
+            deleted = true;
+            toast.success("Deleted note");
+            const nextItems = [...items];
+            nextItems.splice(matchIndex, 1);
+            return {
+              ...prev,
+              importantNoteItems: nextItems,
+              notes: nextItems
+                .map((i) => i.text.trim())
+                .filter(Boolean)
+                .join("\n"),
+            };
+          });
+          if (!deleted) throw new Error("Deletion aborted");
+          break;
+        }
+
+        case "delete_reminder_time": {
+          const time = data.time;
+          let deleted = false;
+          setSettings((prev) => {
+            const times = prev.dailyUpdateReminderTimes || [];
+            const nextTimes = time ? times.filter((t) => t !== time) : times.slice(0, -1);
+            if (nextTimes.length === times.length) {
+              toast.error("Reminder time not found");
+              return prev;
+            }
+            deleted = true;
+            toast.success("Deleted reminder time");
+            return {
+              ...prev,
+              dailyUpdateReminderTimes: nextTimes,
+              dailyUpdateRemindersEnabled: nextTimes.length > 0,
+            };
+          });
+          if (!deleted) throw new Error("Deletion aborted");
+          break;
+        }
+
+        case "add_category": {
+          const name = data.categoryName || "New Category";
+          const newCat = {
+            id: generateId(),
+            name,
+            color: data.categoryColor || "#3b82f6",
+            icon: data.categoryIcon || "🏷️",
+          };
+          setCategories((prev) => [...prev, newCat]);
+          toast.success(`Added category: ${name}`);
+          break;
+        }
+
+        case "delete_category": {
+          const name = data.categoryName || "";
+          let deleted = false;
+          setCategories((prev) => {
+            const matchIndex = prev.findIndex((c) =>
+              c.name.toLowerCase().includes(name.toLowerCase()),
+            );
+            if (matchIndex === -1) {
+              toast.error("Category not found");
+              return prev;
+            }
+            deleted = true;
+            toast.success(`Deleted category: ${prev[matchIndex].name}`);
+            const next = [...prev];
+            next.splice(matchIndex, 1);
+            return next;
+          });
+          if (!deleted) throw new Error("Deletion aborted");
+          break;
+        }
+
         default:
           toast.error("Unsupported action");
           return;
@@ -381,7 +554,7 @@ export function AIAgent() {
 
   // Helper to map category ID to icon/name
   const getCategoryDetails = (id?: string) => {
-    const cat = DEFAULT_CATEGORIES.find((c) => c.id === id);
+    const cat = categories.find((c) => c.id === id) || DEFAULT_CATEGORIES.find((c) => c.id === id);
     return cat ? { name: cat.name, icon: cat.icon } : { name: "Other", icon: "📦" };
   };
 

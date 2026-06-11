@@ -13,7 +13,15 @@ We support the following intents:
 6. "add_important_note" - The user wants to note something down (e.g., "Rent due on the 1st").
 7. "add_reminder_time" - The user wants to configure a reminder alert time (e.g., "Set reminder for 8 PM").
 8. "set_budget_target" - The user wants to set a spending cap/budget (e.g., "Set daily budget limit to 1000").
-9. "unsupported" - If the input does not map to any of these features.
+10. "delete_expense" - The user wants to delete an expense (e.g. "Delete the $50 food expense today").
+11. "delete_income" - The user wants to delete an income entry.
+12. "delete_day_goal" - The user wants to delete a daily goal (e.g. "Remove buy milk goal for tomorrow").
+13. "delete_habit_plan" - The user wants to remove a habit from their daily habits plan.
+14. "delete_important_note" - The user wants to delete a note (e.g. "Delete the rent note").
+15. "delete_reminder_time" - The user wants to delete a reminder time (e.g. "Remove 8 PM reminder").
+16. "add_category" - The user wants to add a new custom category (e.g. "Add a category for Pets").
+17. "delete_category" - The user wants to delete a category (e.g. "Delete Pets category").
+18. "unsupported" - If the input does not map to any of these features.
 
 Supported Categories for Expenses/Income:
 - "food" (Food & Drinks, restaurant, dinner, groceries, coffee, cafe, snacking)
@@ -53,6 +61,14 @@ const responseSchema: any = {
         "add_important_note",
         "add_reminder_time",
         "set_budget_target",
+        "delete_expense",
+        "delete_income",
+        "delete_day_goal",
+        "delete_habit_plan",
+        "delete_important_note",
+        "delete_reminder_time",
+        "add_category",
+        "delete_category",
         "unsupported",
       ],
     },
@@ -81,6 +97,9 @@ const responseSchema: any = {
         title: { type: "string" },
         time: { type: "string", description: "HH:mm format" },
         period: { type: "string", enum: ["daily", "monthly", "yearly"] },
+        categoryName: { type: "string" },
+        categoryColor: { type: "string" },
+        categoryIcon: { type: "string" },
       },
     },
     explanation: { type: "string" },
