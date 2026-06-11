@@ -16,6 +16,7 @@ import {
 import { BudgetBar } from "@/components/BudgetBar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TrendingUp, TrendingDown, Minus, Wallet } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function OverviewScreen() {
   const [expenses] = useExpenses();
@@ -285,31 +286,41 @@ export function OverviewScreen() {
         </div>
 
         {/* Visual Bar Chart */}
-        <div className="flex h-36 items-end justify-between px-2 pt-6 relative border-b border-border/50 pb-2">
-          {chartData.map((d, idx) => {
-            const maxAmount = Math.max(...chartData.map((item) => item.amount), 1);
-            const heightPct = (d.amount / maxAmount) * 100;
-            return (
-              <div key={idx} className="flex flex-1 flex-col items-center gap-1.5 group relative">
-                {/* Tooltip on hover */}
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full mb-1 bg-popover text-popover-foreground text-[10px] px-2 py-0.5 rounded border border-border/50 shadow-sm pointer-events-none z-10 font-mono whitespace-nowrap">
-                  {formatCurrency(d.amount, settings.currency)}
-                </div>
-                {/* Bar */}
-                <div className="w-7 bg-muted/40 dark:bg-muted/15 rounded-t-md overflow-hidden h-24 flex items-end">
-                  <div
-                    className="w-full bg-primary/75 group-hover:bg-primary rounded-t-md transition-all duration-300 ease-out"
-                    style={{ height: `${heightPct}%` }}
-                  />
-                </div>
-                {/* Label */}
-                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
-                  {d.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        <TooltipProvider delayDuration={50}>
+          <div className="flex h-36 items-end justify-between px-2 pt-6 relative border-b border-border/50 pb-2">
+            {chartData.map((d, idx) => {
+              const maxAmount = Math.max(...chartData.map((item) => item.amount), 1);
+              const heightPct = (d.amount / maxAmount) * 100;
+              return (
+                <Tooltip key={idx}>
+                  <TooltipTrigger asChild>
+                    <div className="flex flex-1 flex-col items-center gap-1.5 cursor-pointer">
+                      {/* Bar */}
+                      <div className="w-7 bg-muted/40 dark:bg-muted/15 rounded-t-md overflow-hidden h-24 flex items-end">
+                        <div
+                          className="w-full bg-primary/75 hover:bg-primary rounded-t-md transition-all duration-300 ease-out"
+                          style={{ height: `${heightPct}%` }}
+                        />
+                      </div>
+                      {/* Label */}
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {d.label}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-medium">
+                      Total:{" "}
+                      <span className="font-bold">
+                        {formatCurrency(d.amount, settings.currency)}
+                      </span>
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
 
         {/* Target Completion Progress */}
         {targetAmount > 0 ? (
