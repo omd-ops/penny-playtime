@@ -19,7 +19,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Trash2, Pencil, Search, SlidersHorizontal, X } from "lucide-react";
+import { Trash2, Pencil, Search, SlidersHorizontal, X, ArrowDown, ArrowUp } from "lucide-react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,8 +43,10 @@ export function ExpensesScreen() {
   const [filterType, setFilterType] = useState<"all" | "cash-in" | "cash-out">("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
-  const hasActiveFilters = searchQuery !== "" || filterType !== "all" || filterCategory !== "all";
+  const hasActiveFilters =
+    searchQuery !== "" || filterType !== "all" || filterCategory !== "all" || sortOrder !== "desc";
 
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
@@ -76,8 +78,12 @@ export function ExpensesScreen() {
   }, [expenses, searchQuery, filterType, filterCategory, catMap]);
 
   const sorted = useMemo(
-    () => [...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [filtered],
+    () =>
+      [...filtered].sort((a, b) => {
+        const cmp = b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt);
+        return sortOrder === "desc" ? cmp : -cmp;
+      }),
+    [filtered, sortOrder],
   );
 
   function resetForm() {
@@ -189,8 +195,21 @@ export function ExpensesScreen() {
             <Button
               variant="outline"
               size="icon"
+              onClick={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
+              className="h-10 w-10 shrink-0 rounded-xl relative border-border/50 hover:bg-muted/50"
+              aria-label={sortOrder === "desc" ? "Sort ascending" : "Sort descending"}
+            >
+              {sortOrder === "desc" ? (
+                <ArrowDown className="h-4 w-4" />
+              ) : (
+                <ArrowUp className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              className={`h-10 w-10 rounded-xl relative border-border/50 hover:bg-muted/50 ${
+              className={`h-10 w-10 shrink-0 rounded-xl relative border-border/50 hover:bg-muted/50 ${
                 showFilters || hasActiveFilters ? "border-primary/50 bg-primary/5 text-primary" : ""
               }`}
               aria-label="Toggle filters"
@@ -246,6 +265,7 @@ export function ExpensesScreen() {
                       setSearchQuery("");
                       setFilterType("all");
                       setFilterCategory("all");
+                      setSortOrder("desc");
                     }}
                     className="text-xs text-primary hover:underline font-semibold"
                   >
@@ -280,6 +300,7 @@ export function ExpensesScreen() {
               setSearchQuery("");
               setFilterType("all");
               setFilterCategory("all");
+              setSortOrder("desc");
             }}
             className="mt-4 text-xs font-semibold rounded-lg border-border/50"
           >
@@ -314,10 +335,12 @@ export function ExpensesScreen() {
                         <span className="text-lg">{cat?.icon || "📦"}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {cat?.name || "Unknown"}
+                            {exp.note || cat?.name || "Unknown"}
                           </p>
                           {exp.note && (
-                            <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {cat?.name || "Unknown"}
+                            </p>
                           )}
                         </div>
                         <span

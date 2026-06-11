@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCategories, useBudgetTargets, useSettings, useExpenses } from "@/lib/spend-store";
-import { generateId, type Category, type BudgetTarget } from "@/lib/store";
+import { generateId, type Category, type BudgetTarget, type Expense } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,7 +38,7 @@ export function SettingsScreen() {
   const [categories, setCategories] = useCategories();
   const [targets, setTargets] = useBudgetTargets();
   const [settings, setSettings] = useSettings();
-  const [expenses] = useExpenses();
+  const [expenses, setExpenses] = useExpenses();
   const { theme, setTheme, resolved } = useTheme();
 
   const [tempApiKey, setTempApiKey] = useState(settings.aiApiKey || "");
@@ -125,6 +125,149 @@ export function SettingsScreen() {
     setTargets((prev) => prev.filter((t) => t.id !== id));
     toast.success("Target removed");
   }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const xlsx = await import("xlsx");
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const data = e.target?.result;
+        if (!data) return;
+
+        const workbook = xlsx.read(data, { type: "binary" });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = xlsx.utils.sheet_to_json<any>(worksheet);
+
+        const newExpenses: Expense[] = [];
+
+        jsonData.forEach((row) => {
+          let dateStr = "";
+          if (row.Date) {
+            if (typeof row.Date === "number") {
+              const jsDate = new Date(Math.round((row.Date - 25569) * 86400 * 1000));
+              dateStr = jsDate.toISOString().split("T")[0];
+            } else if (typeof row.Date === "string") {
+              const parts = row.Date.split("-");
+              if (parts.length === 3) {
+                const [d, m, y] = parts;
+                const months: Record<string, string> = {
+                  jan: "01",
+                  feb: "02",
+                  mar: "03",
+                  apr: "04",
+                  may: "05",
+                  jun: "06",
+                  jul: "07",
+                  aug: "08",
+                  sep: "09",
+                  oct: "10",
+                  nov: "11",
+                  dec: "12",
+                };
+                let month = m.padStart(2, "0");
+                if (isNaN(Number(m))) {
+                  month = months[m.toLowerCase().substring(0, 3)] || "01";
+                }
+                const year = y.length === 2 ? `20${y}` : y;
+                dateStr = `${year}-${month}-${d.padStart(2, "0")}`;
+              }
+            }
+          }
+          if (!dateStr) return;
+
+          const note = row.Notes || "Imported Note";
+
+          let categoryId = "other";
+          const lowerNote = note.toLowerCase();
+          const categoryMappings: Record<string, string[]> = {
+            food: ["food", "lunch", "dinner", "breakfast", "grocery", "groceries", "drinks"],
+            transport: [
+              "transport",
+              "taxi",
+              "uber",
+              "ola",
+              "auto",
+              "train",
+              "flight",
+              "bus",
+              "fuel",
+              "petrol",
+            ],
+            shopping: ["shopping", "clothes", "shoes", "amazon", "flipkart"],
+            bills: ["bills", "utility", "recharge", "electricity", "water", "rent", "essential"],
+            entertainment: ["entertainment", "movie", "cinema", "games", "netflix"],
+            health: ["health", "doctor", "pharmacy", "medicine"],
+            education: ["education", "school", "college", "books", "course"],
+            salary: ["salary", "income", "bonus", "previous balance"],
+            grooming: ["grooming", "gromming", "hair", "salon", "barber", "spa"],
+          };
+
+          for (const [catId, keywords] of Object.entries(categoryMappings)) {
+            if (keywords.some((k) => lowerNote.includes(k))) {
+              categoryId = catId;
+              break;
+            }
+          }
+
+          const matchedCategory = categories.find(
+            (c) => c.name.toLowerCase() === row.Category?.toLowerCase(),
+          );
+          if (matchedCategory) {
+            categoryId = matchedCategory.id;
+          }
+
+          let cashIn = row["Cash In"] || row["Cash in"] || row.CashIn;
+          if (typeof cashIn === "string") cashIn = parseFloat(cashIn.replace(/,/g, ""));
+
+          let cashOut = row["Cash Out"] || row["Cash out"] || row.CashOut;
+          if (typeof cashOut === "string") cashOut = parseFloat(cashOut.replace(/,/g, ""));
+
+          if (cashIn > 0) {
+            newExpenses.push({
+              id: generateId(),
+              amount: cashIn,
+              categoryId: categoryId === "other" ? "salary" : categoryId,
+              note: note,
+              date: dateStr,
+              createdAt: new Date().toISOString(),
+              type: "cash-in",
+            });
+          }
+
+          if (cashOut > 0) {
+            newExpenses.push({
+              id: generateId(),
+              amount: cashOut,
+              categoryId: categoryId,
+              note: note,
+              date: dateStr,
+              createdAt: new Date().toISOString(),
+              type: "cash-out",
+            });
+          }
+        });
+
+        if (newExpenses.length > 0) {
+          setExpenses((prev) => [...prev, ...newExpenses]);
+          toast.success(`Imported ${newExpenses.length} records successfully!`);
+        } else {
+          toast.error("No valid records found to import.");
+        }
+      };
+
+      reader.readAsBinaryString(file);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to parse the file.");
+    } finally {
+      event.target.value = "";
+    }
+  };
 
   const themeOptions: { value: "light" | "dark" | "system"; icon: typeof Sun; label: string }[] = [
     { value: "light", icon: Sun, label: "Light" },
@@ -332,33 +475,31 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      {/* Phase 2 stubs */}
+      {/* Import Data */}
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Coming Soon
+          Import Data
         </h2>
         <div className="space-y-2">
-          {[
-            {
-              icon: FileSpreadsheet,
-              label: "Reports & Export",
-              desc: "Download Excel, PDF, and CSV",
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50 opacity-60"
-            >
+          <input
+            type="file"
+            accept=".xlsx, .xls, .csv"
+            style={{ display: "none" }}
+            id="excel-upload"
+            onChange={handleFileUpload}
+          />
+          <label htmlFor="excel-upload">
+            <div className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                <item.icon className="h-4 w-4 text-muted-foreground" />
+                <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.desc}</p>
+                <p className="text-sm font-medium text-foreground">Import Excel Data</p>
+                <p className="text-xs text-muted-foreground">Upload .xlsx or .csv files</p>
               </div>
               <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
             </div>
-          ))}
+          </label>
         </div>
       </section>
 

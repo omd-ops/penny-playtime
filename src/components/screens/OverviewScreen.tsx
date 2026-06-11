@@ -106,31 +106,42 @@ export function OverviewScreen() {
 
   const yearlyTarget = getTargetForPeriod(targets, "yearly");
   const yearlyTargetAmount = yearlyTarget ? yearlyTarget.amount : 0;
-  const yearlyTotal = useMemo(() => {
-    const currentYear = now.getFullYear();
-    return sumDebits(getExpensesForYear(expenses, currentYear));
-  }, [expenses, now]);
+  const currentYearExpenses = useMemo(
+    () => getExpensesForYear(expenses, now.getFullYear()),
+    [expenses, now],
+  );
+  const yearlyTotal = useMemo(() => sumDebits(currentYearExpenses), [currentYearExpenses]);
 
   // Bind values dynamically based on selected tab
-  const { chartData, totalSpent, targetAmount } = useMemo(() => {
+  const { chartData, totalSpent, targetAmount, periodExpenses } = useMemo(() => {
     switch (periodTab) {
-      case "weekly":
+      case "weekly": {
+        const d = new Date();
+        d.setDate(d.getDate() - 6);
+        const startStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const weeklyExpenses = expenses.filter(
+          (e) => e.date >= startStr && e.date <= today && isExpenseDebit(e),
+        );
         return {
           chartData: last7DaysData,
           totalSpent: weeklyTotal,
           targetAmount: weeklyTargetAmount,
+          periodExpenses: weeklyExpenses,
         };
+      }
       case "monthly":
         return {
           chartData: last6MonthsData,
           totalSpent: monthTotal,
           targetAmount: monthlyTargetAmount,
+          periodExpenses: monthExpenses,
         };
       case "yearly":
         return {
           chartData: last3YearsData,
           totalSpent: yearlyTotal,
           targetAmount: yearlyTargetAmount,
+          periodExpenses: currentYearExpenses,
         };
     }
   }, [
@@ -144,13 +155,17 @@ export function OverviewScreen() {
     last3YearsData,
     yearlyTotal,
     yearlyTargetAmount,
+    expenses,
+    today,
+    monthExpenses,
+    currentYearExpenses,
   ]);
 
   const pctCompletion = targetAmount > 0 ? (totalSpent / targetAmount) * 100 : 0;
 
   const categoryBreakdown = useMemo(() => {
     const map = new Map<string, number>();
-    monthExpenses.forEach((e) => {
+    periodExpenses.forEach((e) => {
       if (!isExpenseDebit(e)) return;
       map.set(e.categoryId, (map.get(e.categoryId) || 0) + e.amount);
     });
@@ -163,11 +178,11 @@ export function OverviewScreen() {
           icon: cat?.icon || "📦",
           color: cat?.color || "#6b7280",
           amount,
-          pct: monthTotal > 0 ? (amount / monthTotal) * 100 : 0,
+          pct: totalSpent > 0 ? (amount / totalSpent) * 100 : 0,
         };
       })
       .sort((a, b) => b.amount - a.amount);
-  }, [monthExpenses, categories, monthTotal]);
+  }, [periodExpenses, categories, totalSpent]);
 
   const monthName = now.toLocaleString("default", { month: "long" });
 
@@ -361,7 +376,7 @@ export function OverviewScreen() {
         <h2 className="mb-3 text-sm font-semibold text-foreground">Spending by Category</h2>
         {categoryBreakdown.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            No expenses yet this month. Start logging to see insights! 💡
+            No expenses in this period. Start logging to see insights! 💡
           </p>
         ) : (
           <div className="space-y-3">
