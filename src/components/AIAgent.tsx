@@ -221,6 +221,7 @@ export function AIAgent() {
           currentDayOfWeek,
           aiApiKey: settings.aiApiKey,
           aiModelName: settings.aiModelName,
+          categories,
         }),
       });
 

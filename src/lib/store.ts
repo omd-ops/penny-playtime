@@ -83,6 +83,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "health", name: "Health", color: "#ec4899", icon: "💊" },
   { id: "education", name: "Education", color: "#06b6d4", icon: "📚" },
   { id: "salary", name: "Salary", color: "#22c55e", icon: "🤑" },
+  { id: "grooming", name: "Gromming", color: "#f472b6", icon: "✂️" },
   { id: "other", name: "Other", color: "#6b7280", icon: "📦" },
 ];
 

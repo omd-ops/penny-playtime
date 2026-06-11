@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const systemInstruction = `You are the SpendWise (Penny Pay) AI Intent Agent.
+function getSystemInstruction(categories: any[]) {
+  const categoryDocs =
+    categories && categories.length > 0
+      ? categories.map((c) => `- "${c.id}" (${c.name})`).join("\\n")
+      : `- "other" (Other, general, cash withdrawal, everything else)`;
+
+  return `You are the SpendWise (Penny Pay) AI Intent Agent.
 Your job is to understand natural language user requests and extract their intents, actions, and relevant parameters into structured JSON.
 
 We support the following intents:
@@ -24,15 +30,7 @@ We support the following intents:
 18. "unsupported" - If the input does not map to any of these features.
 
 Supported Categories for Expenses/Income:
-- "food" (Food & Drinks, restaurant, dinner, groceries, coffee, cafe, snacking)
-- "transport" (Transport, uber, taxi, train, bus, metro, fuel, gas, parking)
-- "shopping" (Shopping, clothing, shoes, amazon, electronics, furniture, books)
-- "bills" (Bills & Utilities, rent, wifi, electricity, water, internet, phone bill, subscription)
-- "entertainment" (Entertainment, movie, netflix, game, gig, concert, theater, party)
-- "health" (Health, medicine, doctor, dentist, gym membership, clinic, pharmacy)
-- "education" (Education, tuition, book, course, class, school fees)
-- "salary" (Salary, income, paycheck, wage, earnings, bonus)
-- "other" (Other, general, cash withdrawal, everything else)
+${categoryDocs}
 
 Rules for Date Extraction:
 - Always output the date in YYYY-MM-DD format.
@@ -46,72 +44,68 @@ Rules for Budget Target Period:
 - Must be one of "daily", "monthly", "yearly".
 
 Provide a short, clear, friendly explanation in the "explanation" field describing what was understood and will be executed (e.g., "Logging cash-out of $15.50 for lunch in Food & Drinks today").`;
+}
 
-const responseSchema: any = {
-  type: "object",
-  properties: {
-    success: { type: "boolean" },
-    intent: {
-      type: "string",
-      enum: [
-        "add_expense",
-        "add_income",
-        "toggle_daily_habits",
-        "add_day_goal",
-        "add_habit_plan",
-        "add_important_note",
-        "add_reminder_time",
-        "set_budget_target",
-        "delete_expense",
-        "delete_income",
-        "delete_day_goal",
-        "delete_habit_plan",
-        "delete_important_note",
-        "delete_reminder_time",
-        "add_category",
-        "delete_category",
-        "unsupported",
-      ],
-    },
-    confidence: { type: "number" },
-    data: {
-      type: "object",
-      properties: {
-        amount: { type: "number" },
-        type: { type: "string", enum: ["cash-in", "cash-out"] },
-        categoryId: {
-          type: "string",
-          enum: [
-            "food",
-            "transport",
-            "shopping",
-            "bills",
-            "entertainment",
-            "health",
-            "education",
-            "salary",
-            "other",
-          ],
-        },
-        note: { type: "string" },
-        date: { type: "string", description: "YYYY-MM-DD format" },
-        text: { type: "string" },
-        title: { type: "string" },
-        time: { type: "string", description: "HH:mm format" },
-        period: { type: "string", enum: ["daily", "monthly", "yearly"] },
-        categoryName: { type: "string" },
-        categoryColor: { type: "string" },
-        categoryIcon: { type: "string" },
+function getResponseSchema(categories: any[]) {
+  const categoryIds = categories && categories.length > 0 ? categories.map((c) => c.id) : ["other"];
+
+  return {
+    type: "object",
+    properties: {
+      success: { type: "boolean" },
+      intent: {
+        type: "string",
+        enum: [
+          "add_expense",
+          "add_income",
+          "toggle_daily_habits",
+          "add_day_goal",
+          "add_habit_plan",
+          "add_important_note",
+          "add_reminder_time",
+          "set_budget_target",
+          "delete_expense",
+          "delete_income",
+          "delete_day_goal",
+          "delete_habit_plan",
+          "delete_important_note",
+          "delete_reminder_time",
+          "add_category",
+          "delete_category",
+          "unsupported",
+        ],
       },
+      confidence: { type: "number" },
+      data: {
+        type: "object",
+        properties: {
+          amount: { type: "number" },
+          type: { type: "string", enum: ["cash-in", "cash-out"] },
+          categoryId: {
+            type: "string",
+            enum: categoryIds,
+          },
+          note: { type: "string" },
+          date: { type: "string", description: "YYYY-MM-DD format" },
+          text: { type: "string" },
+          title: { type: "string" },
+          time: { type: "string", description: "HH:mm format" },
+          period: { type: "string", enum: ["daily", "monthly", "yearly"] },
+          categoryName: { type: "string" },
+          categoryColor: { type: "string" },
+          categoryIcon: { type: "string" },
+        },
+      },
+      explanation: { type: "string" },
     },
-    explanation: { type: "string" },
-  },
-  required: ["success", "intent", "confidence", "explanation"],
-};
+    required: ["success", "intent", "confidence", "explanation"],
+  };
+}
 
 export async function POST(request: Request) {
   try {
-    const { prompt, currentDate, currentDayOfWeek, aiApiKey, aiModelName } = await request.json();
+    const { prompt, currentDate, currentDayOfWeek, aiApiKey, aiModelName, categories } =
+      await request.json();
 
     const apiKey = aiApiKey?.trim() || process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -130,7 +124,7 @@ export async function POST(request: Request) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: modelName,
-      systemInstruction: systemInstruction,
+      systemInstruction: getSystemInstruction(categories),
     });
 
     const userContext = `Context: Today is ${currentDate} (${currentDayOfWeek}).
@@ -146,7 +140,7 @@ User Input: "${prompt}"`;
           contents: [{ role: "user", parts: [{ text: userContext }] }],
           generationConfig: {
             responseMimeType: "application/json",
-            responseSchema: responseSchema,
+            responseSchema: getResponseSchema(categories) as any,
             temperature: 0.1,
           },
         });

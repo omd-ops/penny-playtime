@@ -19,7 +19,17 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Trash2, Pencil } from "lucide-react";
+import {
+  Trash2,
+  Pencil,
+  Search,
+  SlidersHorizontal,
+  X,
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,9 +48,52 @@ export function ExpensesScreen() {
   const [note, setNote] = useState("");
   const [date, setDate] = useState(todayStr());
 
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "cash-in" | "cash-out">("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
+  const hasActiveFilters =
+    searchQuery !== "" || filterType !== "all" || filterCategory !== "all" || sortOrder !== "desc";
+
+  const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+
+  const filtered = useMemo(() => {
+    return expenses.filter((exp) => {
+      // 1. Search Query filter (matches note or category name)
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const noteMatch = exp.note?.toLowerCase().includes(query) || false;
+        const cat = catMap.get(exp.categoryId);
+        const categoryMatch = cat?.name.toLowerCase().includes(query) || false;
+        if (!noteMatch && !categoryMatch) {
+          return false;
+        }
+      }
+
+      // 2. Type filter
+      if (filterType !== "all" && exp.type !== filterType) {
+        return false;
+      }
+
+      // 3. Category filter
+      if (filterCategory !== "all" && exp.categoryId !== filterCategory) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [expenses, searchQuery, filterType, filterCategory, catMap]);
+
   const sorted = useMemo(
-    () => [...expenses].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [expenses],
+    () =>
+      [...filtered].sort((a, b) => {
+        const cmp = b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt);
+        return sortOrder === "desc" ? cmp : -cmp;
+      }),
+    [filtered, sortOrder],
   );
 
   function resetForm() {
@@ -109,7 +162,7 @@ export function ExpensesScreen() {
     toast.success("Expense deleted");
   }
 
-  const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  // catMap moved to top
 
   // Group by date
   const grouped = useMemo(() => {
@@ -128,13 +181,141 @@ export function ExpensesScreen() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Expenses</h1>
       </header>
 
-      {grouped.length === 0 ? (
+      {expenses.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search note or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-8 h-10 rounded-xl bg-card border-border/50 focus-visible:ring-1 focus-visible:ring-primary/25"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
+              className="h-10 w-10 shrink-0 rounded-xl relative border-border/50 hover:bg-muted/50"
+              aria-label={sortOrder === "desc" ? "Sort ascending" : "Sort descending"}
+            >
+              {sortOrder === "desc" ? (
+                <ArrowDown className="h-4 w-4" />
+              ) : (
+                <ArrowUp className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`h-10 w-10 shrink-0 rounded-xl relative border-border/50 hover:bg-muted/50 ${
+                showFilters || hasActiveFilters ? "border-primary/50 bg-primary/5 text-primary" : ""
+              }`}
+              aria-label="Toggle filters"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {hasActiveFilters && (
+                <span className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-primary" />
+              )}
+            </Button>
+          </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-2 gap-3 rounded-xl bg-card p-3 border border-border/50 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Type
+                </label>
+                <Select value={filterType} onValueChange={(val: any) => setFilterType(val)}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border-border/50 focus:ring-1">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="cash-in">Cash In</SelectItem>
+                    <SelectItem value="cash-out">Cash Out</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Category
+                </label>
+                <Select value={filterCategory} onValueChange={(val: any) => setFilterCategory(val)}>
+                  <SelectTrigger className="h-9 text-xs rounded-lg bg-background border-border/50 focus:ring-1">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.icon} {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasActiveFilters && (
+                <div className="col-span-2 flex justify-end pt-1">
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setFilterType("all");
+                      setFilterCategory("all");
+                      setSortOrder("desc");
+                    }}
+                    className="text-xs text-primary hover:underline font-semibold"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {expenses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <span className="text-4xl mb-3">📝</span>
           <p className="text-muted-foreground text-sm">
             No expenses yet. Tap <strong>Cash In</strong> or <strong>Cash Out</strong> below to log
             your first one!
           </p>
+        </div>
+      ) : sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-card border border-border/50 rounded-2xl p-6 shadow-sm">
+          <span className="text-3xl mb-2">🔍</span>
+          <p className="text-sm font-semibold text-foreground">No matching expenses</p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+            We couldn&apos;t find any expenses matching your current filters.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSearchQuery("");
+              setFilterType("all");
+              setFilterCategory("all");
+              setSortOrder("desc");
+            }}
+            className="mt-4 text-xs font-semibold rounded-lg border-border/50"
+          >
+            Clear Search & Filters
+          </Button>
         </div>
       ) : (
         <div className="space-y-5">
@@ -164,10 +345,12 @@ export function ExpensesScreen() {
                         <span className="text-lg">{cat?.icon || "📦"}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {cat?.name || "Unknown"}
+                            {exp.note || cat?.name || "Unknown"}
                           </p>
                           {exp.note && (
-                            <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {cat?.name || "Unknown"}
+                            </p>
                           )}
                         </div>
                         <span
@@ -268,13 +451,41 @@ export function ExpensesScreen() {
               <label className="text-sm font-medium text-foreground" htmlFor="exp-date">
                 Date
               </label>
-              <Input
-                id="exp-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-1 h-12"
-              />
+              <div className="flex items-center gap-2 mt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0 border-border/50 bg-background/50"
+                  onClick={() => {
+                    const d = new Date(date + "T12:00:00");
+                    d.setDate(d.getDate() - 1);
+                    setDate(d.toISOString().split("T")[0]);
+                  }}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Input
+                  id="exp-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="h-12 flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0 border-border/50 bg-background/50"
+                  onClick={() => {
+                    const d = new Date(date + "T12:00:00");
+                    d.setDate(d.getDate() + 1);
+                    setDate(d.toISOString().split("T")[0]);
+                  }}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
             <Button
               onClick={handleSave}
