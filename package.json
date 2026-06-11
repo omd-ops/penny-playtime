@@ -15,7 +15,7 @@
     "supabase:lint": "npx supabase db lint",
     "supabase:status": "npx supabase migration list --local",
     "supabase:generate": "npx supabase gen types typescript --local > src/types/supabase.ts",
-    "supabase:validate-types": "npx supabase gen types typescript --local > src/types/.supabase.temp.ts && npx prettier --write src/types/.supabase.temp.ts && diff src/types/supabase.ts src/types/.supabase.temp.ts && rm src/types/.supabase.temp.ts || (rm -f src/types/.supabase.temp.ts && exit 1)",
+    "supabase:validate-types": "npx supabase gen types typescript --local > src/types/.supabase.temp.ts && npx prettier --write src/types/.supabase.temp.ts && if ! diff -u src/types/supabase.ts src/types/.supabase.temp.ts; then rm -f src/types/.supabase.temp.ts; exit 1; else rm -f src/types/.supabase.temp.ts; fi",
     "supabase:validate": "npm run supabase:lint && npm run supabase:status && npm run supabase:validate-types"
   },
   "dependencies": {
@@ -84,6 +84,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "prettier": "^3.7.3",
+    "supabase": "^2.106.0",
     "typescript": "^5.8.3"
   },
   "lint-staged": {

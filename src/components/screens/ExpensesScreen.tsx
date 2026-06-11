@@ -19,7 +19,17 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Trash2, Pencil, Search, SlidersHorizontal, X, ArrowDown, ArrowUp } from "lucide-react";
+import {
+  Trash2,
+  Pencil,
+  Search,
+  SlidersHorizontal,
+  X,
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -441,13 +451,41 @@ export function ExpensesScreen() {
               <label className="text-sm font-medium text-foreground" htmlFor="exp-date">
                 Date
               </label>
-              <Input
-                id="exp-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-1 h-12"
-              />
+              <div className="flex items-center gap-2 mt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0 border-border/50 bg-background/50"
+                  onClick={() => {
+                    const d = new Date(date + "T12:00:00");
+                    d.setDate(d.getDate() - 1);
+                    setDate(d.toISOString().split("T")[0]);
+                  }}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Input
+                  id="exp-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="h-12 flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0 border-border/50 bg-background/50"
+                  onClick={() => {
+                    const d = new Date(date + "T12:00:00");
+                    d.setDate(d.getDate() + 1);
+                    setDate(d.toISOString().split("T")[0]);
+                  }}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
             <Button
               onClick={handleSave}
