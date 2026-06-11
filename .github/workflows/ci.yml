@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Codebase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Linting
+        run: npm run lint
+
+      - name: Run Formatting Check
+        run: npm run format:check
+
+      - name: Run Typecheck
+        run: npm run typecheck
+
+      - name: Start Supabase Local Instance
+        run: npx supabase start
+
+      - name: Run Supabase Schema Linting
+        run: npm run supabase:lint
+
+      - name: Verify Supabase Migration Sync
+        run: npm run supabase:status
+
+      - name: Validate Supabase Types Drift
+        run: npm run supabase:validate-types

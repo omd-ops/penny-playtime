@@ -41,3 +41,7 @@ out
 # Supabase temp files
 supabase/.temp/
 supabase/.branches/
+
+# TypeScript build info
+*.tsbuildinfo
+

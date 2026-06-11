@@ -16,6 +16,15 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Optimize: Avoid calling Supabase Auth API if there are no active session/auth cookies.
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") || cookie.name.includes("auth-token"));
+
+  if (!hasAuthCookie) {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {

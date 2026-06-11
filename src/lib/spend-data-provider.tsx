@@ -165,9 +165,9 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         const next = fn(prev);
         stateRef.current = next;
         writeLocalSnapshot(next);
-        queueMicrotask(() => debouncedCloudUpsert());
         return next;
       });
+      debouncedCloudUpsert();
     },
     [debouncedCloudUpsert],
   );

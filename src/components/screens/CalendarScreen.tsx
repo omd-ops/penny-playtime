@@ -24,12 +24,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
 import { BudgetBar } from "@/components/BudgetBar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ChevronLeft, ChevronRight, Check, Plus, Trash2 } from "lucide-react";
@@ -55,9 +55,8 @@ export function CalendarScreen() {
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [dayTargetNote, setDayTargetNote] = useState(DEFAULT_DAY_TARGET_LABEL);
-  const dayTargetNoteRef = useRef(dayTargetNote);
-  dayTargetNoteRef.current = dayTargetNote;
+  const [importanceText, setImportanceText] = useState("");
+  const [emojiText, setEmojiText] = useState("");
 
   const dailyTarget = getTargetForPeriod(targets, "daily");
 
@@ -141,39 +140,67 @@ export function CalendarScreen() {
 
   useEffect(() => {
     if (!selectedDate) return;
-    const t = selFlag?.label?.trim();
-    setDayTargetNote(t ? t : DEFAULT_DAY_TARGET_LABEL);
-  }, [selectedDate, selFlag?.label]);
+    setImportanceText(selFlag?.importance || "");
+    setEmojiText(selFlag?.emoji || "");
+  }, [selectedDate, selFlag?.label, selFlag?.importance, selFlag?.emoji]);
 
-  function labelFromNoteDraft(): string | undefined {
-    const raw = dayTargetNoteRef.current.trim();
-    if (raw === "" || raw === DEFAULT_DAY_TARGET_LABEL) return undefined;
-    return raw;
-  }
-
-  function commitFlagLabel() {
+  function toggleGlobalHabit(habitId: string) {
     if (!selectedDate) return;
-    const labelToStore = labelFromNoteDraft();
-
     setDayFlags((prev) => {
       const idx = prev.findIndex((f) => f.date === selectedDate);
       if (idx < 0) {
-        if (labelToStore === undefined) return prev;
-        return [...prev, { date: selectedDate, metTarget: false, label: labelToStore }];
+        return [
+          ...prev,
+          {
+            date: selectedDate,
+            metTarget: false,
+            completedHabitIds: [habitId],
+          },
+        ];
       }
       const cur = prev[idx];
-      const next = { ...cur, label: labelToStore };
-      if (!next.metTarget && next.label === undefined) {
+      const completed = cur.completedHabitIds || [];
+      const nextCompleted = completed.includes(habitId)
+        ? completed.filter((id) => id !== habitId)
+        : [...completed, habitId];
+      return prev.map((f) =>
+        f.date === selectedDate ? { ...f, completedHabitIds: nextCompleted } : f,
+      );
+    });
+  }
+
+  function commitImportance() {
+    if (!selectedDate) return;
+    setDayFlags((prev) => {
+      const idx = prev.findIndex((f) => f.date === selectedDate);
+      if (idx < 0) {
+        if (!importanceText.trim() && !emojiText.trim()) return prev;
+        return [
+          ...prev,
+          {
+            date: selectedDate,
+            metTarget: false,
+            importance: importanceText.trim(),
+            emoji: emojiText.trim(),
+          },
+        ];
+      }
+      const cur = prev[idx];
+      const next = { ...cur, importance: importanceText.trim(), emoji: emojiText.trim() };
+      if (
+        !next.metTarget &&
+        next.label === undefined &&
+        !next.importance?.trim() &&
+        !next.emoji?.trim()
+      ) {
         return prev.filter((f) => f.date !== selectedDate);
       }
       return prev.map((f) => (f.date === selectedDate ? next : f));
     });
   }
 
-  function toggleFlag() {
+  function toggleAllHabits() {
     if (!selectedDate) return;
-    const extraLabel = labelFromNoteDraft();
-
     setDayFlags((prev) => {
       const exists = prev.find((f) => f.date === selectedDate);
       if (exists) {
@@ -184,7 +211,8 @@ export function CalendarScreen() {
         {
           date: selectedDate,
           metTarget: true,
-          ...(extraLabel ? { label: extraLabel } : {}),
+          ...(importanceText.trim() ? { importance: importanceText.trim() } : {}),
+          ...(emojiText.trim() ? { emoji: emojiText.trim() } : {}),
         },
       ];
     });
@@ -252,11 +280,11 @@ export function CalendarScreen() {
           const credited = roll?.credit ?? 0;
           const hasOut = debited > 0;
           const hasIn = credited > 0;
-          const showAmounts = hasOut || hasIn;
           const isToday = cell.dateStr === today;
           const flag = flagMap.get(cell.dateStr);
           const goalsForDay = goalsMap.get(cell.dateStr) ?? [];
-          const anyCustomGoalDone = goalsForDay.some((g) => g.done);
+          const completedGlobalCount = flag?.completedHabitIds?.length ?? 0;
+          const anyCustomGoalDone = goalsForDay.some((g) => g.done) || completedGlobalCount > 0;
 
           const hasHabitLines = dailyHabitLines.length > 0;
           const ariaParts = [
@@ -268,7 +296,7 @@ export function CalendarScreen() {
             : "";
           const ariaLabel = `${cell.dateStr}${ariaParts.length ? `: ${ariaParts.join(", ")}` : ", no cash entries"}.${ariaHabits} Open day detail.`;
 
-          const cellTall = showAmounts || hasHabitLines;
+          const cellTall = hasHabitLines;
 
           return (
             <button
@@ -280,8 +308,7 @@ export function CalendarScreen() {
                 "relative flex w-full flex-col rounded-xl border border-border/40 px-1 py-1.5 text-left transition-colors",
                 cellTall ? "min-h-[7rem]" : "min-h-[3.25rem] justify-center",
                 isToday && "ring-2 ring-primary ring-inset",
-                showAmounts && "bg-accent",
-                !showAmounts && "hover:bg-muted/80",
+                "hover:bg-muted/80",
                 selectedDate === cell.dateStr && "bg-primary/10",
               )}
             >
@@ -293,26 +320,9 @@ export function CalendarScreen() {
               >
                 {cell.day}
               </span>
-              {showAmounts && (
-                <div className="mt-1 flex w-full flex-col items-center gap-0.5 border-t border-border/50 pt-1">
-                  {hasOut && (
-                    <p className="w-full truncate text-center text-xs font-semibold tabular-nums leading-tight text-red-600 dark:text-red-400">
-                      {formatCurrency(debited, settings.currency)}
-                    </p>
-                  )}
-                  {hasIn && (
-                    <p className="w-full truncate text-center text-xs font-semibold tabular-nums leading-tight text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(credited, settings.currency)}
-                    </p>
-                  )}
-                </div>
-              )}
               {hasHabitLines && (
                 <ul
-                  className={cn(
-                    "mt-1 w-full min-h-0 flex-1 space-y-px overflow-hidden",
-                    showAmounts ? "border-t border-border/50 pt-1" : "",
-                  )}
+                  className={cn("mt-1 w-full min-h-0 flex-1 space-y-px overflow-hidden")}
                   aria-hidden
                 >
                   {dailyHabitLines.slice(0, 5).map((text, idx) => (
@@ -343,188 +353,249 @@ export function CalendarScreen() {
       </div>
 
       {/* Day detail sheet */}
-      <Sheet
+      <Drawer
         open={!!selectedDate}
         onOpenChange={(open) => {
           if (!open) setSelectedDate(null);
         }}
       >
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>
-              {selectedDate &&
-                new Date(selectedDate + "T12:00:00").toLocaleDateString("default", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-            </SheetTitle>
-            <SheetDescription>Money in/out, spending budget, and daily habits</SheetDescription>
-          </SheetHeader>
-
-          <div className="mt-4 space-y-4">
-            {/* Totals */}
-            <div className="flex items-center justify-between rounded-xl bg-surface p-3">
+        <DrawerContent className="max-h-[85vh]">
+          <div className="mx-auto w-full max-w-lg overflow-y-auto px-4 pb-8 pt-2">
+            <DrawerHeader className="px-0 flex flex-row items-start justify-between gap-4 text-left">
               <div>
-                <p className="text-xs text-muted-foreground">Debited</p>
-                <p className="text-lg font-bold text-foreground">
-                  {formatCurrency(selDebited, settings.currency)}
-                </p>
+                <DrawerTitle>
+                  {selectedDate &&
+                    new Date(selectedDate + "T12:00:00").toLocaleDateString("default", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                </DrawerTitle>
+                <DrawerDescription>
+                  Money in/out, spending budget, and daily habits
+                </DrawerDescription>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Credited</p>
-                <p className="text-lg font-bold text-foreground">
-                  {formatCurrency(selCredited, settings.currency)}
-                </p>
-              </div>
-            </div>
-
-            {/* Spending vs daily budget (from Settings / Notes — not habits) */}
-            {dailyTarget && dailyTarget.amount > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">
-                    Spending budget (this day)
-                  </span>
-                  <StatusBadge status={getBudgetStatus(selDebited, dailyTarget.amount)} />
-                </div>
-                <BudgetBar
-                  spent={selDebited}
-                  limit={dailyTarget.amount}
-                  currency={settings.currency}
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Importance..."
+                  className="h-8 text-xs w-[100px]"
+                  value={importanceText}
+                  onChange={(e) => setImportanceText(e.target.value)}
+                  onBlur={commitImportance}
+                  aria-label="Importance of the day"
+                />
+                <Input
+                  placeholder="🌟"
+                  className="h-8 w-10 text-center text-sm px-1"
+                  maxLength={2}
+                  value={emojiText}
+                  onChange={(e) => setEmojiText(e.target.value)}
+                  onBlur={commitImportance}
+                  aria-label="Emoji for the day"
                 />
               </div>
-            )}
+            </DrawerHeader>
 
-            {/* Daily habits / tasks (editable) + add extra goals */}
-            <div className="flex w-full items-stretch gap-2 rounded-xl bg-card border border-border/50 p-2 min-h-[44px]">
-              <button
-                type="button"
-                onClick={toggleFlag}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg min-h-[44px] min-w-[44px]"
-                aria-pressed={selFlag?.metTarget ?? false}
-                aria-label="Toggle daily habits done"
-              >
-                <div
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
-                    selFlag?.metTarget
-                      ? "bg-status-safe border-status-safe"
-                      : "border-muted-foreground",
-                  )}
-                >
-                  {selFlag?.metTarget && <Check className="h-4 w-4 text-status-safe-foreground" />}
+            <div className="mt-4 space-y-4">
+              {/* Totals */}
+              <div className="flex items-center justify-between rounded-xl bg-surface p-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Debited</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {formatCurrency(selDebited, settings.currency)}
+                  </p>
                 </div>
-              </button>
-              <Input
-                value={dayTargetNote}
-                onChange={(e) => setDayTargetNote(e.target.value)}
-                onBlur={commitFlagLabel}
-                className="h-11 min-h-[44px] flex-1 border-0 bg-transparent px-2 text-sm font-medium shadow-none focus-visible:ring-1"
-                placeholder={DEFAULT_DAY_TARGET_LABEL}
-                aria-label="Daily habits description"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-11 w-11 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  addDayGoal();
-                }}
-                aria-label="Add another goal for this day"
-              >
-                <Plus className="h-5 w-5" strokeWidth={2.25} />
-              </Button>
-            </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Credited</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {formatCurrency(selCredited, settings.currency)}
+                  </p>
+                </div>
+              </div>
 
-            {goalsForSelected.length > 0 && (
+              {/* Spending vs daily budget (from Settings / Notes — not habits) */}
+              {dailyTarget && dailyTarget.amount > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">
+                      Spending budget (this day)
+                    </span>
+                    <StatusBadge status={getBudgetStatus(selDebited, dailyTarget.amount)} />
+                  </div>
+                  <BudgetBar
+                    spent={selDebited}
+                    limit={dailyTarget.amount}
+                    currency={settings.currency}
+                  />
+                </div>
+              )}
+
+              {/* Daily Plan Checklists & Add Goal */}
               <div className="space-y-2">
-                {goalsForSelected.map((goal) => (
-                  <div
-                    key={goal.id}
-                    className="flex items-center gap-2 rounded-xl border border-border/50 bg-card p-2"
+                <div className="flex items-center justify-between pb-1">
+                  <span className="text-sm font-semibold text-foreground">Daily tasks</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-1 rounded-lg text-muted-foreground hover:text-foreground"
+                    onClick={addDayGoal}
+                    aria-label="Add custom goal for this day"
                   >
+                    <Plus className="h-4 w-4" />
+                    <span>Add</span>
+                  </Button>
+                </div>
+
+                {/* Render global daily habits */}
+                {(settings.dailyHabitItems ?? []).map((habit) => {
+                  const isDone = selFlag?.completedHabitIds?.includes(habit.id) || false;
+                  return (
+                    <div
+                      key={habit.id}
+                      className="flex w-full items-stretch gap-2 rounded-xl bg-card border border-border/50 p-2 min-h-[44px]"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleGlobalHabit(habit.id)}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg min-h-[44px] min-w-[44px]"
+                        aria-pressed={isDone}
+                        aria-label={`Mark habit done: ${habit.text}`}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
+                            isDone
+                              ? "bg-status-safe border-status-safe"
+                              : "border-muted-foreground",
+                          )}
+                        >
+                          {isDone && <Check className="h-4 w-4 text-status-safe-foreground" />}
+                        </div>
+                      </button>
+                      <div className="flex flex-1 items-center px-2">
+                        <span className="text-sm font-medium text-foreground">{habit.text}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Fallback legacy checkbox if no global habits but legacy exists */}
+                {!settings.dailyHabitItems?.length && selFlag?.label && (
+                  <div className="flex w-full items-stretch gap-2 rounded-xl bg-card border border-border/50 p-2 min-h-[44px]">
                     <button
                       type="button"
-                      onClick={() => toggleDayGoal(goal.id)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                      aria-label={goal.done ? "Mark goal not done" : "Mark goal done"}
+                      onClick={toggleAllHabits}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg min-h-[44px] min-w-[44px]"
+                      aria-pressed={selFlag?.metTarget ?? false}
                     >
                       <div
                         className={cn(
                           "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
-                          goal.done
+                          selFlag?.metTarget
                             ? "bg-status-safe border-status-safe"
                             : "border-muted-foreground",
                         )}
                       >
-                        {goal.done && <Check className="h-4 w-4 text-status-safe-foreground" />}
-                      </div>
-                    </button>
-                    <Input
-                      value={goal.title}
-                      onChange={(e) => updateDayGoalTitle(goal.id, e.target.value)}
-                      className="h-10 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
-                      placeholder="Goal title"
-                      aria-label="Goal title"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeDayGoal(goal.id)}
-                      aria-label="Remove goal"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Expense list */}
-            {selExpenses.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No expenses on this day. 🎉
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {selExpenses.map((exp) => {
-                  const cat = catMap.get(exp.categoryId);
-                  return (
-                    <div
-                      key={exp.id}
-                      className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50"
-                    >
-                      <span className="text-lg">{cat?.icon || "📦"}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {cat?.name || "Unknown"}
-                        </p>
-                        {exp.note && (
-                          <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
+                        {selFlag?.metTarget && (
+                          <Check className="h-4 w-4 text-status-safe-foreground" />
                         )}
                       </div>
-                      <span
-                        className={`text-sm font-semibold ${
-                          isExpenseDebit(exp) ? "text-red-600" : "text-emerald-600"
-                        }`}
-                      >
-                        {isExpenseDebit(exp) ? "−" : "+"}
-                        {formatCurrency(exp.amount, settings.currency)}
-                      </span>
+                    </button>
+                    <div className="flex flex-1 items-center px-2">
+                      <span className="text-sm font-medium text-foreground">{selFlag.label}</span>
                     </div>
-                  );
-                })}
+                  </div>
+                )}
               </div>
-            )}
+
+              {goalsForSelected.length > 0 && (
+                <div className="space-y-2">
+                  {goalsForSelected.map((goal) => (
+                    <div
+                      key={goal.id}
+                      className="flex items-center gap-2 rounded-xl border border-border/50 bg-card p-2"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleDayGoal(goal.id)}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                        aria-label={goal.done ? "Mark goal not done" : "Mark goal done"}
+                      >
+                        <div
+                          className={cn(
+                            "flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors",
+                            goal.done
+                              ? "bg-status-safe border-status-safe"
+                              : "border-muted-foreground",
+                          )}
+                        >
+                          {goal.done && <Check className="h-4 w-4 text-status-safe-foreground" />}
+                        </div>
+                      </button>
+                      <Input
+                        value={goal.title}
+                        onChange={(e) => updateDayGoalTitle(goal.id, e.target.value)}
+                        className="h-10 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+                        placeholder="Goal title"
+                        aria-label="Goal title"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeDayGoal(goal.id)}
+                        aria-label="Remove goal"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Expense list */}
+              {selExpenses.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No expenses on this day. 🎉
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {selExpenses.map((exp) => {
+                    const cat = catMap.get(exp.categoryId);
+                    return (
+                      <div
+                        key={exp.id}
+                        className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50"
+                      >
+                        <span className="text-lg">{cat?.icon || "📦"}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {cat?.name || "Unknown"}
+                          </p>
+                          {exp.note && (
+                            <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
+                          )}
+                        </div>
+                        <span
+                          className={`text-sm font-semibold ${
+                            isExpenseDebit(exp) ? "text-red-600" : "text-emerald-600"
+                          }`}
+                        >
+                          {isExpenseDebit(exp) ? "−" : "+"}
+                          {formatCurrency(exp.amount, settings.currency)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
