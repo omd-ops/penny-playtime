@@ -14,8 +14,8 @@
     "validate": "npm run typecheck && npm run lint --fix && npm run format && npm run supabase:validate",
     "supabase:lint": "npx supabase db lint",
     "supabase:status": "npx supabase migration list --local",
-    "supabase:generate": "npx supabase gen types --local > src/types/supabase.ts",
-    "supabase:validate-types": "npx supabase gen types --local > src/types/.supabase.temp.ts && npx prettier --write src/types/.supabase.temp.ts && if ! diff -u src/types/supabase.ts src/types/.supabase.temp.ts; then rm -f src/types/.supabase.temp.ts; exit 1; else rm -f src/types/.supabase.temp.ts; fi",
+    "supabase:generate": "npx supabase gen types --db-url \"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" > src/types/supabase.ts",
+    "supabase:validate-types": "npx supabase gen types --db-url \"postgresql://postgres:postgres@127.0.0.1:54322/postgres\" > src/types/.supabase.temp.ts && npx prettier --write src/types/.supabase.temp.ts && if ! diff -u src/types/supabase.ts src/types/.supabase.temp.ts; then rm -f src/types/.supabase.temp.ts; exit 1; else rm -f src/types/.supabase.temp.ts; fi",
     "supabase:validate": "npm run supabase:lint && npm run supabase:status && npm run supabase:validate-types"
   },
   "dependencies": {
