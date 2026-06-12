@@ -98,35 +98,34 @@ function cleanupLegacyKeys() {
   }
 }
 
-type Ctx = {
-  ready: boolean;
-  cloud: boolean;
+const CloudCtx = createContext<{ ready: boolean; cloud: boolean } | null>(null);
+const CategoriesCtx = createContext<{
   categories: Category[];
   setCategories: (u: Category[] | ((p: Category[]) => Category[])) => void;
+} | null>(null);
+const ExpensesCtx = createContext<{
   expenses: Expense[];
   setExpenses: (
     u: Expense[] | ((p: Expense[]) => Expense[]),
     immediate?: boolean,
   ) => Promise<void> | void;
+} | null>(null);
+const BudgetTargetsCtx = createContext<{
   budgetTargets: BudgetTarget[];
   setBudgetTargets: (u: BudgetTarget[] | ((p: BudgetTarget[]) => BudgetTarget[])) => void;
+} | null>(null);
+const DayFlagsCtx = createContext<{
   dayFlags: DayFlag[];
   setDayFlags: (u: DayFlag[] | ((p: DayFlag[]) => DayFlag[])) => void;
+} | null>(null);
+const DayGoalsCtx = createContext<{
   dayGoals: DayGoal[];
   setDayGoals: (u: DayGoal[] | ((p: DayGoal[]) => DayGoal[])) => void;
+} | null>(null);
+const SettingsCtx = createContext<{
   settings: AppSettings;
   setSettings: (u: AppSettings | ((p: AppSettings) => AppSettings)) => void;
-};
-
-const SpendCtx = createContext<Ctx | null>(null);
-
-function useSpendCtx() {
-  const ctx = useContext(SpendCtx);
-  if (!ctx) {
-    throw new Error("Spend hooks must be used within SpendDataProvider");
-  }
-  return ctx;
-}
+} | null>(null);
 
 export function SpendDataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -609,99 +608,99 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
     };
   }, [pushFullStateToCloud]);
 
-  const value = useMemo<Ctx>(
-    () => ({
-      ready,
-      cloud,
-      categories: state.categories,
-      setCategories,
-      expenses: state.expenses,
-      setExpenses,
-      budgetTargets: state.budgetTargets,
-      setBudgetTargets,
-      dayFlags: state.dayFlags,
-      setDayFlags,
-      dayGoals: state.dayGoals,
-      setDayGoals,
-      settings: state.settings,
-      setSettings,
-    }),
-    [
-      ready,
-      cloud,
-      state.categories,
-      state.expenses,
-      state.budgetTargets,
-      state.dayFlags,
-      state.dayGoals,
-      state.settings,
-      setCategories,
-      setExpenses,
-      setBudgetTargets,
-      setDayFlags,
-      setDayGoals,
-      setSettings,
-    ],
+  const cloudVal = useMemo(() => ({ ready, cloud }), [ready, cloud]);
+  const categoriesVal = useMemo(
+    () => ({ categories: state.categories, setCategories }),
+    [state.categories, setCategories],
+  );
+  const expensesVal = useMemo(
+    () => ({ expenses: state.expenses, setExpenses }),
+    [state.expenses, setExpenses],
+  );
+  const budgetTargetsVal = useMemo(
+    () => ({ budgetTargets: state.budgetTargets, setBudgetTargets }),
+    [state.budgetTargets, setBudgetTargets],
+  );
+  const dayFlagsVal = useMemo(
+    () => ({ dayFlags: state.dayFlags, setDayFlags }),
+    [state.dayFlags, setDayFlags],
+  );
+  const dayGoalsVal = useMemo(
+    () => ({ dayGoals: state.dayGoals, setDayGoals }),
+    [state.dayGoals, setDayGoals],
+  );
+  const settingsVal = useMemo(
+    () => ({ settings: state.settings, setSettings }),
+    [state.settings, setSettings],
   );
 
-  if (!ready) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-          aria-hidden
-        />
-        <p className="text-sm">Loading your data…</p>
-      </div>
-    );
-  }
-
-  return <SpendCtx.Provider value={value}>{children}</SpendCtx.Provider>;
+  return (
+    <CloudCtx.Provider value={cloudVal}>
+      <CategoriesCtx.Provider value={categoriesVal}>
+        <ExpensesCtx.Provider value={expensesVal}>
+          <BudgetTargetsCtx.Provider value={budgetTargetsVal}>
+            <DayFlagsCtx.Provider value={dayFlagsVal}>
+              <DayGoalsCtx.Provider value={dayGoalsVal}>
+                <SettingsCtx.Provider value={settingsVal}>{children}</SettingsCtx.Provider>
+              </DayGoalsCtx.Provider>
+            </DayFlagsCtx.Provider>
+          </BudgetTargetsCtx.Provider>
+        </ExpensesCtx.Provider>
+      </CategoriesCtx.Provider>
+    </CloudCtx.Provider>
+  );
 }
 
 export function useCategories(): [
   Category[],
   (u: Category[] | ((p: Category[]) => Category[])) => void,
 ] {
-  const { categories, setCategories } = useSpendCtx();
-  return [categories, setCategories];
+  const ctx = useContext(CategoriesCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.categories, ctx.setCategories];
 }
 
 export function useExpenses(): [
   Expense[],
   (u: Expense[] | ((p: Expense[]) => Expense[]), immediate?: boolean) => Promise<void> | void,
 ] {
-  const { expenses, setExpenses } = useSpendCtx();
-  return [expenses, setExpenses];
+  const ctx = useContext(ExpensesCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.expenses, ctx.setExpenses];
 }
 
 export function useBudgetTargets(): [
   BudgetTarget[],
   (u: BudgetTarget[] | ((p: BudgetTarget[]) => BudgetTarget[])) => void,
 ] {
-  const { budgetTargets, setBudgetTargets } = useSpendCtx();
-  return [budgetTargets, setBudgetTargets];
+  const ctx = useContext(BudgetTargetsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.budgetTargets, ctx.setBudgetTargets];
 }
 
 export function useDayFlags(): [DayFlag[], (u: DayFlag[] | ((p: DayFlag[]) => DayFlag[])) => void] {
-  const { dayFlags, setDayFlags } = useSpendCtx();
-  return [dayFlags, setDayFlags];
+  const ctx = useContext(DayFlagsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.dayFlags, ctx.setDayFlags];
 }
 
 export function useDayGoals(): [DayGoal[], (u: DayGoal[] | ((p: DayGoal[]) => DayGoal[])) => void] {
-  const { dayGoals, setDayGoals } = useSpendCtx();
-  return [dayGoals, setDayGoals];
+  const ctx = useContext(DayGoalsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.dayGoals, ctx.setDayGoals];
 }
 
 export function useSettings(): [
   AppSettings,
   (u: AppSettings | ((p: AppSettings) => AppSettings)) => void,
 ] {
-  const { settings, setSettings } = useSpendCtx();
-  return [settings, setSettings];
+  const ctx = useContext(SettingsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.settings, ctx.setSettings];
 }
 
 export function useCloudStatus(): { ready: boolean; cloud: boolean } {
-  const { ready, cloud } = useSpendCtx();
-  return { ready, cloud };
+  const ctx = useContext(CloudCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return { ready: ctx.ready, cloud: ctx.cloud };
 }

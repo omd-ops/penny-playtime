@@ -52,9 +52,6 @@ export function SettingsScreen() {
   const { theme, setTheme, resolved } = useTheme();
   const { cloud } = useCloudStatus();
 
-  const [tempApiKey, setTempApiKey] = useState(settings.aiApiKey || "");
-  const [tempModelName, setTempModelName] = useState(settings.aiModelName || "");
-
   const [showCatForm, setShowCatForm] = useState(false);
   const [catName, setCatName] = useState("");
   const [catIcon, setCatIcon] = useState("📦");
@@ -390,68 +387,6 @@ export function SettingsScreen() {
               {opt.label}
             </button>
           ))}
-        </div>
-      </section>
-
-      {/* AI Configuration */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          AI Assistant Settings
-        </h2>
-        <div className="space-y-3 rounded-xl bg-card p-3 border border-border/50">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Gemini API Key (Optional overrides ENV)
-            </label>
-            <div className="relative">
-              <Input
-                type="password"
-                placeholder="AIzaSy..."
-                value={tempApiKey}
-                onChange={(e) => setTempApiKey(e.target.value)}
-                className="h-10 text-sm pr-16"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                className="absolute right-1 top-1 bottom-1 h-8 text-xs"
-                onClick={() => {
-                  setSettings((prev) => ({ ...prev, aiApiKey: tempApiKey }));
-                  toast.success("API Key saved");
-                }}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Model Name (Optional overrides ENV)
-            </label>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="gemini-2.5-flash"
-                value={tempModelName}
-                onChange={(e) => setTempModelName(e.target.value)}
-                className="h-10 text-sm pr-16"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                className="absolute right-1 top-1 bottom-1 h-8 text-xs"
-                onClick={() => {
-                  setSettings((prev) => ({ ...prev, aiModelName: tempModelName }));
-                  toast.success("Model Name saved");
-                }}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground leading-tight">
-            These credentials are saved locally in your browser. Leave blank to use server defaults.
-          </p>
         </div>
       </section>
 
