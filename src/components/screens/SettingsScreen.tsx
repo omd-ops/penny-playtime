@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useCategories, useBudgetTargets, useSettings, useExpenses } from "@/lib/spend-store";
+import {
+  useCategories,
+  useBudgetTargets,
+  useSettings,
+  useExpenses,
+  useCloudStatus,
+} from "@/lib/spend-store";
 import { generateId, type Category, type BudgetTarget, type Expense } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +46,7 @@ export function SettingsScreen() {
   const [settings, setSettings] = useSettings();
   const [expenses, setExpenses] = useExpenses();
   const { theme, setTheme, resolved } = useTheme();
+  const { cloud } = useCloudStatus();
 
   const [tempApiKey, setTempApiKey] = useState(settings.aiApiKey || "");
   const [tempModelName, setTempModelName] = useState(settings.aiModelName || "");
@@ -130,140 +137,159 @@ export function SettingsScreen() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const toastId = toast.loading("Processing Excel file...");
+
     try {
       const xlsx = await import("xlsx");
-      const reader = new FileReader();
 
-      reader.onload = (e) => {
-        const data = e.target?.result;
-        if (!data) return;
+      const data = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result instanceof ArrayBuffer) {
+            resolve(e.target.result);
+          } else {
+            reject(new Error("Failed to read file as ArrayBuffer"));
+          }
+        };
+        reader.onerror = () => reject(new Error("File reading failed"));
+        reader.readAsArrayBuffer(file);
+      });
 
-        const workbook = xlsx.read(data, { type: "binary" });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = xlsx.utils.sheet_to_json<any>(worksheet);
+      const workbook = xlsx.read(data, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonData = xlsx.utils.sheet_to_json<any>(worksheet);
 
-        const newExpenses: Expense[] = [];
+      const newExpenses: Expense[] = [];
 
-        jsonData.forEach((row) => {
-          let dateStr = "";
-          if (row.Date) {
-            if (typeof row.Date === "number") {
-              const jsDate = new Date(Math.round((row.Date - 25569) * 86400 * 1000));
-              dateStr = jsDate.toISOString().split("T")[0];
-            } else if (typeof row.Date === "string") {
-              const parts = row.Date.split("-");
-              if (parts.length === 3) {
-                const [d, m, y] = parts;
-                const months: Record<string, string> = {
-                  jan: "01",
-                  feb: "02",
-                  mar: "03",
-                  apr: "04",
-                  may: "05",
-                  jun: "06",
-                  jul: "07",
-                  aug: "08",
-                  sep: "09",
-                  oct: "10",
-                  nov: "11",
-                  dec: "12",
-                };
-                let month = m.padStart(2, "0");
-                if (isNaN(Number(m))) {
-                  month = months[m.toLowerCase().substring(0, 3)] || "01";
-                }
-                const year = y.length === 2 ? `20${y}` : y;
-                dateStr = `${year}-${month}-${d.padStart(2, "0")}`;
+      jsonData.forEach((row) => {
+        let dateStr = "";
+        if (row.Date) {
+          if (typeof row.Date === "number") {
+            const jsDate = new Date(Math.round((row.Date - 25569) * 86400 * 1000));
+            dateStr = jsDate.toISOString().split("T")[0];
+          } else if (typeof row.Date === "string") {
+            const parts = row.Date.split("-");
+            if (parts.length === 3) {
+              const [d, m, y] = parts;
+              const months: Record<string, string> = {
+                jan: "01",
+                feb: "02",
+                mar: "03",
+                apr: "04",
+                may: "05",
+                jun: "06",
+                jul: "07",
+                aug: "08",
+                sep: "09",
+                oct: "10",
+                nov: "11",
+                dec: "12",
+              };
+              let month = m.padStart(2, "0");
+              if (isNaN(Number(m))) {
+                month = months[m.toLowerCase().substring(0, 3)] || "01";
               }
+              const year = y.length === 2 ? `20${y}` : y;
+              dateStr = `${year}-${month}-${d.padStart(2, "0")}`;
             }
           }
-          if (!dateStr) return;
-
-          const note = row.Notes || "Imported Note";
-
-          let categoryId = "other";
-          const lowerNote = note.toLowerCase();
-          const categoryMappings: Record<string, string[]> = {
-            food: ["food", "lunch", "dinner", "breakfast", "grocery", "groceries", "drinks"],
-            transport: [
-              "transport",
-              "taxi",
-              "uber",
-              "ola",
-              "auto",
-              "train",
-              "flight",
-              "bus",
-              "fuel",
-              "petrol",
-            ],
-            shopping: ["shopping", "clothes", "shoes", "amazon", "flipkart"],
-            bills: ["bills", "utility", "recharge", "electricity", "water", "rent", "essential"],
-            entertainment: ["entertainment", "movie", "cinema", "games", "netflix"],
-            health: ["health", "doctor", "pharmacy", "medicine"],
-            education: ["education", "school", "college", "books", "course"],
-            salary: ["salary", "income", "bonus", "previous balance"],
-            grooming: ["grooming", "gromming", "hair", "salon", "barber", "spa"],
-          };
-
-          for (const [catId, keywords] of Object.entries(categoryMappings)) {
-            if (keywords.some((k) => lowerNote.includes(k))) {
-              categoryId = catId;
-              break;
-            }
-          }
-
-          const matchedCategory = categories.find(
-            (c) => c.name.toLowerCase() === row.Category?.toLowerCase(),
-          );
-          if (matchedCategory) {
-            categoryId = matchedCategory.id;
-          }
-
-          let cashIn = row["Cash In"] || row["Cash in"] || row.CashIn;
-          if (typeof cashIn === "string") cashIn = parseFloat(cashIn.replace(/,/g, ""));
-
-          let cashOut = row["Cash Out"] || row["Cash out"] || row.CashOut;
-          if (typeof cashOut === "string") cashOut = parseFloat(cashOut.replace(/,/g, ""));
-
-          if (cashIn > 0) {
-            newExpenses.push({
-              id: generateId(),
-              amount: cashIn,
-              categoryId: categoryId === "other" ? "salary" : categoryId,
-              note: note,
-              date: dateStr,
-              createdAt: new Date().toISOString(),
-              type: "cash-in",
-            });
-          }
-
-          if (cashOut > 0) {
-            newExpenses.push({
-              id: generateId(),
-              amount: cashOut,
-              categoryId: categoryId,
-              note: note,
-              date: dateStr,
-              createdAt: new Date().toISOString(),
-              type: "cash-out",
-            });
-          }
-        });
-
-        if (newExpenses.length > 0) {
-          setExpenses((prev) => [...prev, ...newExpenses]);
-          toast.success(`Imported ${newExpenses.length} records successfully!`);
-        } else {
-          toast.error("No valid records found to import.");
         }
-      };
+        if (!dateStr) return;
 
-      reader.readAsBinaryString(file);
+        const note = row.Notes || "Imported Note";
+
+        let categoryId = "other";
+        const lowerNote = note.toLowerCase();
+        const categoryMappings: Record<string, string[]> = {
+          food: ["food", "lunch", "dinner", "breakfast", "grocery", "groceries", "drinks"],
+          transport: [
+            "transport",
+            "taxi",
+            "uber",
+            "ola",
+            "auto",
+            "train",
+            "flight",
+            "bus",
+            "fuel",
+            "petrol",
+          ],
+          shopping: ["shopping", "clothes", "shoes", "amazon", "flipkart"],
+          bills: ["bills", "utility", "recharge", "electricity", "water", "rent", "essential"],
+          entertainment: ["entertainment", "movie", "cinema", "games", "netflix"],
+          health: ["health", "doctor", "pharmacy", "medicine"],
+          education: ["education", "school", "college", "books", "course"],
+          salary: ["salary", "income", "bonus", "previous balance"],
+          grooming: ["grooming", "gromming", "hair", "salon", "barber", "spa"],
+        };
+
+        for (const [catId, keywords] of Object.entries(categoryMappings)) {
+          if (keywords.some((k) => lowerNote.includes(k))) {
+            categoryId = catId;
+            break;
+          }
+        }
+
+        const matchedCategory = categories.find(
+          (c) => c.name.toLowerCase() === row.Category?.toLowerCase(),
+        );
+        if (matchedCategory) {
+          categoryId = matchedCategory.id;
+        }
+
+        let cashIn = row["Cash In"] || row["Cash in"] || row.CashIn;
+        if (typeof cashIn === "string") cashIn = parseFloat(cashIn.replace(/,/g, ""));
+
+        let cashOut = row["Cash Out"] || row["Cash out"] || row.CashOut;
+        if (typeof cashOut === "string") cashOut = parseFloat(cashOut.replace(/,/g, ""));
+
+        if (cashIn > 0) {
+          newExpenses.push({
+            id: generateId(),
+            amount: cashIn,
+            categoryId: categoryId === "other" ? "salary" : categoryId,
+            note: note,
+            date: dateStr,
+            createdAt: new Date().toISOString(),
+            type: "cash-in",
+          });
+        }
+
+        if (cashOut > 0) {
+          newExpenses.push({
+            id: generateId(),
+            amount: cashOut,
+            categoryId: categoryId,
+            note: note,
+            date: dateStr,
+            createdAt: new Date().toISOString(),
+            type: "cash-out",
+          });
+        }
+      });
+
+      if (newExpenses.length > 0) {
+        if (cloud) {
+          toast.loading("Saving imported records to cloud database...", { id: toastId });
+          await setExpenses((prev) => [...prev, ...newExpenses], true);
+          toast.success(
+            `Imported ${newExpenses.length} records successfully and synced to cloud!`,
+            { id: toastId },
+          );
+        } else {
+          setExpenses((prev) => [...prev, ...newExpenses]);
+          toast.success(
+            `Imported ${newExpenses.length} records successfully (saved on this device)!`,
+            { id: toastId },
+          );
+        }
+      } else {
+        toast.error("No valid records found to import.", { id: toastId });
+      }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to parse the file.");
+      toast.error("Failed to import file.", { id: toastId });
     } finally {
       event.target.value = "";
     }

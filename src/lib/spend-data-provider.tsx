@@ -96,7 +96,10 @@ type Ctx = {
   categories: Category[];
   setCategories: (u: Category[] | ((p: Category[]) => Category[])) => void;
   expenses: Expense[];
-  setExpenses: (u: Expense[] | ((p: Expense[]) => Expense[])) => void;
+  setExpenses: (
+    u: Expense[] | ((p: Expense[]) => Expense[]),
+    immediate?: boolean,
+  ) => Promise<void> | void;
   budgetTargets: BudgetTarget[];
   setBudgetTargets: (u: BudgetTarget[] | ((p: BudgetTarget[]) => BudgetTarget[])) => void;
   dayFlags: DayFlag[];
@@ -160,16 +163,48 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
   }, [cloud]);
 
   const patch = useCallback(
-    (fn: (prev: GlobalState) => GlobalState) => {
+    (fn: (prev: GlobalState) => GlobalState, immediate = false): Promise<void> | void => {
+      let nextState: GlobalState | null = null;
       setState((prev) => {
         const next = fn(prev);
         stateRef.current = next;
+        nextState = next;
         writeLocalSnapshot(next);
         return next;
       });
-      debouncedCloudUpsert();
+      if (immediate) {
+        if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+        pushTimerRef.current = null;
+        const uid = userIdRef.current;
+        if (!uid || !cloud) return Promise.resolve();
+        return (async () => {
+          try {
+            const supabase = createBrowserSupabase();
+            const s = nextState || stateRef.current;
+            const { error } = await supabase.from("spend_snapshots").upsert(
+              {
+                user_id: uid,
+                categories: s.categories,
+                expenses: s.expenses,
+                budget_targets: s.budgetTargets,
+                day_flags: s.dayFlags,
+                day_goals: s.dayGoals,
+                settings: s.settings,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id" },
+            );
+            if (error) throw error;
+          } catch (e) {
+            console.error(e);
+            throw e;
+          }
+        })();
+      } else {
+        debouncedCloudUpsert();
+      }
     },
-    [debouncedCloudUpsert],
+    [cloud, debouncedCloudUpsert],
   );
 
   const setCategories = useCallback(
@@ -184,11 +219,14 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
   );
 
   const setExpenses = useCallback(
-    (u: Expense[] | ((p: Expense[]) => Expense[])) => {
-      patch((prev) => ({
-        ...prev,
-        expenses: typeof u === "function" ? (u as (p: Expense[]) => Expense[])(prev.expenses) : u,
-      }));
+    (u: Expense[] | ((p: Expense[]) => Expense[]), immediate = false) => {
+      return patch(
+        (prev) => ({
+          ...prev,
+          expenses: typeof u === "function" ? (u as (p: Expense[]) => Expense[])(prev.expenses) : u,
+        }),
+        immediate,
+      );
     },
     [patch],
   );
@@ -239,7 +277,7 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const gate = { cancelled: false, timedOut: false };
-    const INIT_TIMEOUT_MS = 15_000;
+    const INIT_TIMEOUT_MS = 30_000;
 
     async function init() {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -293,9 +331,35 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         if (rowErr) throw rowErr;
 
         if (row) {
+          const remoteExpenses = (row.expenses as Expense[] | null) ?? [];
+          const local = readLocalSnapshot();
+
+          // If local has expenses but remote does not, sync local state to the cloud database
+          const shouldUploadLocal = local.expenses.length > 0 && remoteExpenses.length === 0;
+          if (shouldUploadLocal) {
+            const { error: syncErr } = await supabase.from("spend_snapshots").upsert({
+              user_id: user.id,
+              categories: local.categories,
+              expenses: local.expenses,
+              budget_targets: local.budgetTargets,
+              day_flags: local.dayFlags,
+              day_goals: local.dayGoals,
+              settings: local.settings,
+              updated_at: new Date().toISOString(),
+            });
+            if (syncErr) throw syncErr;
+            if (!gate.cancelled && !gate.timedOut) {
+              stateRef.current = local;
+              setState(local);
+              setCloud(true);
+              setReady(true);
+            }
+            return;
+          }
+
           const next: GlobalState = {
             categories: (row.categories as Category[] | null) ?? DEFAULT_CATEGORIES,
-            expenses: (row.expenses as Expense[] | null) ?? [],
+            expenses: remoteExpenses,
             budgetTargets: (row.budget_targets as BudgetTarget[] | null) ?? [],
             dayFlags: (row.day_flags as DayFlag[] | null) ?? [],
             dayGoals: (row.day_goals as DayGoal[] | null) ?? [],
@@ -432,7 +496,10 @@ export function useCategories(): [
   return [categories, setCategories];
 }
 
-export function useExpenses(): [Expense[], (u: Expense[] | ((p: Expense[]) => Expense[])) => void] {
+export function useExpenses(): [
+  Expense[],
+  (u: Expense[] | ((p: Expense[]) => Expense[]), immediate?: boolean) => Promise<void> | void,
+] {
   const { expenses, setExpenses } = useSpendCtx();
   return [expenses, setExpenses];
 }
@@ -461,4 +528,9 @@ export function useSettings(): [
 ] {
   const { settings, setSettings } = useSpendCtx();
   return [settings, setSettings];
+}
+
+export function useCloudStatus(): { ready: boolean; cloud: boolean } {
+  const { ready, cloud } = useSpendCtx();
+  return { ready, cloud };
 }

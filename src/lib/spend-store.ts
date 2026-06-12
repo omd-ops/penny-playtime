@@ -7,4 +7,5 @@ export {
   useDayFlags,
   useDayGoals,
   useSettings,
+  useCloudStatus,
 } from "./spend-data-provider";
