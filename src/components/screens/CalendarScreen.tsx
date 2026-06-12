@@ -573,10 +573,12 @@ export function CalendarScreen() {
                         <span className="text-lg">{cat?.icon || "📦"}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {cat?.name || "Unknown"}
+                            {exp.note ? exp.note : cat?.name || "Unknown"}
                           </p>
                           {exp.note && (
-                            <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {cat?.name || "Unknown"}
+                            </p>
                           )}
                         </div>
                         <span

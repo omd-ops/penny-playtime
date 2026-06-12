@@ -192,7 +192,9 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         color: c.color,
         icon: c.icon,
       }));
-      const { error } = await supabase.from("categories").upsert(payload);
+      const { error } = await supabase
+        .from("categories")
+        .upsert(payload, { onConflict: "user_id, name" });
       if (error) throw error;
     }
 
@@ -240,7 +242,9 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         period: t.period,
         amount: t.amount,
       }));
-      const { error } = await supabase.from("budget_targets").upsert(payload);
+      const { error } = await supabase
+        .from("budget_targets")
+        .upsert(payload, { onConflict: "user_id, period" });
       if (error) throw error;
     }
 
@@ -583,7 +587,7 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
           }),
         ]);
       } catch (e) {
-        console.error(e);
+        console.error("Supabase init error:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
         if (gate.cancelled) return;
         const isTimeout = gate.timedOut && e instanceof Error && e.message === "TIMEOUT";
         toast.error(

@@ -301,8 +301,6 @@ export function SettingsScreen() {
     { value: "system", icon: Monitor, label: "System" },
   ];
 
-  const currencyOptions = ["$", "€", "£", "¥", "₹", "₿"];
-
   return (
     <div className="mx-auto max-w-lg px-4 pt-6 pb-4">
       <h1 className="text-2xl font-bold tracking-tight text-foreground mb-6">Settings</h1>
@@ -326,29 +324,6 @@ export function SettingsScreen() {
             >
               <opt.icon className="h-4 w-4" />
               {opt.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Currency */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Currency
-        </h2>
-        <div className="flex gap-2 flex-wrap">
-          {currencyOptions.map((c) => (
-            <button
-              key={c}
-              onClick={() => setSettings((prev) => ({ ...prev, currency: c }))}
-              className={cn(
-                "min-h-[44px] min-w-[44px] rounded-xl border text-sm font-semibold transition-colors",
-                settings.currency === c
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border/50 hover:border-primary/50",
-              )}
-            >
-              {c}
             </button>
           ))}
         </div>

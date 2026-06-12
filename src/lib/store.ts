@@ -90,7 +90,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
 export const DEFAULT_DAILY_REMINDER_TIMES = ["09:00", "14:00", "19:00"] as const;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  currency: "$",
+  currency: "₹",
   theme: "system",
   notes: "",
   dailyHabitItems: [],
