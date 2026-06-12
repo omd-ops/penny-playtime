@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useExpenses, useCategories, useBudgetTargets, useSettings } from "@/lib/spend-store";
 import {
   getExpensesForMonth,
   getExpensesForDate,
+  getExpensesForYear,
   sumDebits,
   isExpenseDebit,
   getTargetForPeriod,
@@ -15,6 +16,7 @@ import {
 import { BudgetBar } from "@/components/BudgetBar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TrendingUp, TrendingDown, Minus, Wallet } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function OverviewScreen() {
   const [expenses] = useExpenses();
@@ -23,7 +25,7 @@ export function OverviewScreen() {
   const [settings] = useSettings();
 
   const today = todayStr();
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const year = now.getFullYear();
   const month = now.getMonth();
 
@@ -47,9 +49,123 @@ export function OverviewScreen() {
 
   const delta = prevMonthTotal > 0 ? ((monthTotal - prevMonthTotal) / prevMonthTotal) * 100 : 0;
 
+  // Tab-based visual representation of spends (weekly, monthly, yearly)
+  const [periodTab, setPeriodTab] = useState<"weekly" | "monthly" | "yearly">("weekly");
+
+  // Calculations for Weekly (last 7 days rolling)
+  const last7DaysData = useMemo(() => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dayName = d.toLocaleDateString("default", { weekday: "short" });
+      const dayExpenses = expenses.filter((e) => e.date === dateStr && isExpenseDebit(e));
+      const total = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+      data.push({ label: dayName, amount: total, dateStr });
+    }
+    return data;
+  }, [expenses]);
+
+  const weeklyTotal = useMemo(
+    () => last7DaysData.reduce((sum, d) => sum + d.amount, 0),
+    [last7DaysData],
+  );
+  const weeklyTargetAmount = dailyTarget ? dailyTarget.amount * 7 : 0;
+
+  // Calculations for Monthly (last 6 months rolling)
+  const last6MonthsData = useMemo(() => {
+    const data = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const yearVal = d.getFullYear();
+      const monthVal = d.getMonth();
+      const monthName = d.toLocaleString("default", { month: "short" });
+      const monthExpenses = getExpensesForMonth(expenses, yearVal, monthVal);
+      const total = sumDebits(monthExpenses);
+      data.push({ label: monthName, amount: total, year: yearVal, month: monthVal });
+    }
+    return data;
+  }, [expenses]);
+
+  const monthlyTargetAmount = monthlyTarget ? monthlyTarget.amount : 0;
+
+  // Calculations for Yearly (last 3 years rolling)
+  const last3YearsData = useMemo(() => {
+    const data = [];
+    const currentYear = now.getFullYear();
+    for (let i = 2; i >= 0; i--) {
+      const targetYear = currentYear - i;
+      const yearExpenses = getExpensesForYear(expenses, targetYear);
+      const total = sumDebits(yearExpenses);
+      data.push({ label: String(targetYear), amount: total, year: targetYear });
+    }
+    return data;
+  }, [expenses, now]);
+
+  const yearlyTarget = getTargetForPeriod(targets, "yearly");
+  const yearlyTargetAmount = yearlyTarget ? yearlyTarget.amount : 0;
+  const currentYearExpenses = useMemo(
+    () => getExpensesForYear(expenses, now.getFullYear()),
+    [expenses, now],
+  );
+  const yearlyTotal = useMemo(() => sumDebits(currentYearExpenses), [currentYearExpenses]);
+
+  // Bind values dynamically based on selected tab
+  const { chartData, totalSpent, targetAmount, periodExpenses } = useMemo(() => {
+    switch (periodTab) {
+      case "weekly": {
+        const d = new Date();
+        d.setDate(d.getDate() - 6);
+        const startStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const weeklyExpenses = expenses.filter(
+          (e) => e.date >= startStr && e.date <= today && isExpenseDebit(e),
+        );
+        return {
+          chartData: last7DaysData,
+          totalSpent: weeklyTotal,
+          targetAmount: weeklyTargetAmount,
+          periodExpenses: weeklyExpenses,
+        };
+      }
+      case "monthly":
+        return {
+          chartData: last6MonthsData,
+          totalSpent: monthTotal,
+          targetAmount: monthlyTargetAmount,
+          periodExpenses: monthExpenses,
+        };
+      case "yearly":
+        return {
+          chartData: last3YearsData,
+          totalSpent: yearlyTotal,
+          targetAmount: yearlyTargetAmount,
+          periodExpenses: currentYearExpenses,
+        };
+    }
+  }, [
+    periodTab,
+    last7DaysData,
+    weeklyTotal,
+    weeklyTargetAmount,
+    last6MonthsData,
+    monthTotal,
+    monthlyTargetAmount,
+    last3YearsData,
+    yearlyTotal,
+    yearlyTargetAmount,
+    expenses,
+    today,
+    monthExpenses,
+    currentYearExpenses,
+  ]);
+
+  const pctCompletion = targetAmount > 0 ? (totalSpent / targetAmount) * 100 : 0;
+
   const categoryBreakdown = useMemo(() => {
     const map = new Map<string, number>();
-    monthExpenses.forEach((e) => {
+    periodExpenses.forEach((e) => {
       if (!isExpenseDebit(e)) return;
       map.set(e.categoryId, (map.get(e.categoryId) || 0) + e.amount);
     });
@@ -62,11 +178,11 @@ export function OverviewScreen() {
           icon: cat?.icon || "📦",
           color: cat?.color || "#6b7280",
           amount,
-          pct: monthTotal > 0 ? (amount / monthTotal) * 100 : 0,
+          pct: totalSpent > 0 ? (amount / totalSpent) * 100 : 0,
         };
       })
       .sort((a, b) => b.amount - a.amount);
-  }, [monthExpenses, categories, monthTotal]);
+  }, [periodExpenses, categories, totalSpent]);
 
   const monthName = now.toLocaleString("default", { month: "long" });
 
@@ -163,12 +279,104 @@ export function OverviewScreen() {
         </div>
       )}
 
+      {/* Visual Spending Trends Card */}
+      <div className="mb-4 rounded-2xl bg-card p-5 shadow-sm border border-border/50">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-foreground">Spending Trends</h2>
+          <div className="flex gap-1 bg-muted p-1 rounded-lg">
+            {(["weekly", "monthly", "yearly"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setPeriodTab(tab)}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors capitalize ${
+                  periodTab === tab
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Visual Bar Chart */}
+        <TooltipProvider delayDuration={50}>
+          <div className="flex h-36 items-end justify-between px-2 pt-6 relative border-b border-border/50 pb-2">
+            {chartData.map((d, idx) => {
+              const maxAmount = Math.max(...chartData.map((item) => item.amount), 1);
+              const heightPct = (d.amount / maxAmount) * 100;
+              return (
+                <Tooltip key={idx}>
+                  <TooltipTrigger asChild>
+                    <div className="flex flex-1 flex-col items-center gap-1.5 cursor-pointer">
+                      {/* Bar */}
+                      <div className="w-7 bg-muted/40 dark:bg-muted/15 rounded-t-md overflow-hidden h-24 flex items-end">
+                        <div
+                          className="w-full bg-primary/75 hover:bg-primary rounded-t-md transition-all duration-300 ease-out"
+                          style={{ height: `${heightPct}%` }}
+                        />
+                      </div>
+                      {/* Label */}
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {d.label}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    <p className="font-medium">
+                      Total:{" "}
+                      <span className="font-bold">
+                        {formatCurrency(d.amount, settings.currency)}
+                      </span>
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
+
+        {/* Target Completion Progress */}
+        {targetAmount > 0 ? (
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                {periodTab} Target Completion
+              </span>
+              <span className="text-xs font-semibold text-foreground">
+                {formatCurrency(totalSpent, settings.currency)} /{" "}
+                {formatCurrency(targetAmount, settings.currency)}
+              </span>
+            </div>
+            <BudgetBar spent={totalSpent} limit={targetAmount} currency={settings.currency} />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {pctCompletion >= 100 ? (
+                <span className="text-status-over font-medium">⚠️ Budget limit reached</span>
+              ) : (
+                <span>
+                  You have used{" "}
+                  <strong className="text-foreground">{pctCompletion.toFixed(0)}%</strong> of your
+                  target limit.
+                </span>
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 text-center">
+            <p className="text-xs text-muted-foreground">
+              No budget cap set for this period. Set one in Settings to track completion.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Category breakdown */}
       <div className="mb-4 rounded-2xl bg-card p-4 shadow-sm border border-border/50">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Spending by Category</h2>
         {categoryBreakdown.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            No expenses yet this month. Start logging to see insights! 💡
+            No expenses in this period. Start logging to see insights! 💡
           </p>
         ) : (
           <div className="space-y-3">

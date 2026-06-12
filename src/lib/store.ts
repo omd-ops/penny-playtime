@@ -29,6 +29,9 @@ export interface DayFlag {
   metTarget: boolean;
   /** Custom label for the habits row (e.g. “Gym + wake 7am”). Omit to use default copy. */
   label?: string;
+  importance?: string;
+  emoji?: string;
+  completedHabitIds?: string[];
 }
 
 /** User-defined goals for a calendar day (in addition to the default daily-target checkbox). */
@@ -65,6 +68,10 @@ export interface AppSettings {
   dailyUpdateRemindersEnabled?: boolean;
   /** Local wall-clock times in 24h `HH:mm` format. */
   dailyUpdateReminderTimes?: string[];
+  /** Custom Gemini API key for the AI agent */
+  aiApiKey?: string;
+  /** Custom Gemini model name for the AI agent */
+  aiModelName?: string;
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -75,6 +82,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "entertainment", name: "Entertainment", color: "#8b5cf6", icon: "🎬" },
   { id: "health", name: "Health", color: "#ec4899", icon: "💊" },
   { id: "education", name: "Education", color: "#06b6d4", icon: "📚" },
+  { id: "salary", name: "Salary", color: "#22c55e", icon: "🤑" },
+  { id: "grooming", name: "Gromming", color: "#f472b6", icon: "✂️" },
   { id: "other", name: "Other", color: "#6b7280", icon: "📦" },
 ];
 

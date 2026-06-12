@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { GlobalToaster } from "@/components/GlobalToaster";
 import { SpendDataProvider } from "@/lib/spend-store";
 import { DailyUpdateReminderScheduler } from "@/components/DailyUpdateReminderScheduler";
+import { AIAgent } from "@/components/AIAgent";
 import "@/styles.css";
 
 export const metadata: Metadata = {
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <SpendDataProvider>
             <DailyUpdateReminderScheduler />
+            <AIAgent />
             <div className="min-h-screen pb-20">{children}</div>
           </SpendDataProvider>
           <BottomNav />

@@ -12,7 +12,10 @@ export function getSupabaseUrl(): string {
   return process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 }
 
+let clientSingleton: ReturnType<typeof createBrowserClient> | null = null;
+
 export function createBrowserSupabase() {
+  if (clientSingleton) return clientSingleton;
   const url = getSupabaseUrl();
   const key = getSupabasePublishableKey();
   if (!url || !key) {
@@ -20,5 +23,6 @@ export function createBrowserSupabase() {
       "Missing Supabase URL or anon/publishable key. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or VITE_* equivalents via next.config env).",
     );
   }
-  return createBrowserClient(url, key);
+  clientSingleton = createBrowserClient(url, key);
+  return clientSingleton;
 }
