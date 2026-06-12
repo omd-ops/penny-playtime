@@ -128,6 +128,25 @@ export function formatCurrency(amount: number, currency: string) {
   return `${currency}${amount.toFixed(2)}`;
 }
 
+export function formatCompactCurrency(amount: number, currency: string) {
+  if (amount === 0) return "—";
+  let formattedNum = "";
+  if (amount >= 100000) {
+    formattedNum = new Intl.NumberFormat("en-IN", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(amount);
+  } else if (amount >= 1000) {
+    formattedNum = new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(amount);
+  } else {
+    formattedNum = amount % 1 === 0 ? String(amount) : amount.toFixed(0);
+  }
+  return `${currency}${formattedNum}`;
+}
+
 export function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

@@ -12,6 +12,7 @@ import {
   formatCurrency,
   todayStr,
   getBudgetStatus,
+  formatCompactCurrency,
 } from "@/lib/store";
 import { BudgetBar } from "@/components/BudgetBar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -309,16 +310,23 @@ export function OverviewScreen() {
               return (
                 <Tooltip key={idx}>
                   <TooltipTrigger asChild>
-                    <div className="flex flex-1 flex-col items-center gap-1.5 cursor-pointer">
+                    <div className="flex flex-1 flex-col items-center justify-end h-full gap-1 cursor-pointer">
+                      {/* Amount above the bar */}
+                      <span className="text-[9px] font-bold text-foreground/80 truncate max-w-full text-center">
+                        {d.amount > 0 ? formatCompactCurrency(d.amount, settings.currency) : "—"}
+                      </span>
                       {/* Bar */}
-                      <div className="w-7 bg-muted/40 dark:bg-muted/15 rounded-t-md overflow-hidden h-24 flex items-end">
+                      <div
+                        className="w-7 bg-muted/40 dark:bg-muted/15 rounded-t-md overflow-hidden flex items-end"
+                        style={{ height: "65px" }}
+                      >
                         <div
                           className="w-full bg-primary/75 hover:bg-primary rounded-t-md transition-all duration-300 ease-out"
                           style={{ height: `${heightPct}%` }}
                         />
                       </div>
                       {/* Label */}
-                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5">
                         {d.label}
                       </span>
                     </div>
