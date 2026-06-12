@@ -11,7 +11,15 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import type { AppSettings, BudgetTarget, Category, DayFlag, DayGoal, Expense } from "./store";
+import type {
+  AppSettings,
+  BudgetTarget,
+  Category,
+  DayFlag,
+  DayGoal,
+  Expense,
+  ImportantNoteItem,
+} from "./store";
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS as STORE_DEFAULT_SETTINGS } from "./store";
 import { createBrowserSupabase } from "@/lib/supabase/client";
 
@@ -130,6 +138,165 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
   const userIdRef = useRef<string | null>(null);
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const pushFullStateToCloud = useCallback(async (userId: string, s: GlobalState) => {
+    const supabase = createBrowserSupabase();
+
+    // 1. Fetch current database states to reconcile collections (so we can delete items no longer present)
+    const [catRes, expRes, tarRes, flaRes, goaRes] = await Promise.all([
+      supabase.from("categories").select("id").eq("user_id", userId),
+      supabase.from("expenses").select("id").eq("user_id", userId),
+      supabase.from("budget_targets").select("id").eq("user_id", userId),
+      supabase.from("day_flags").select("date").eq("user_id", userId),
+      supabase.from("day_goals").select("id").eq("user_id", userId),
+    ]);
+
+    if (catRes.error) throw catRes.error;
+    if (expRes.error) throw expRes.error;
+    if (tarRes.error) throw tarRes.error;
+    if (flaRes.error) throw flaRes.error;
+    if (goaRes.error) throw goaRes.error;
+
+    // 2. Sync user settings (single row)
+    const { error: settingsErr } = await supabase.from("user_settings").upsert({
+      user_id: userId,
+      currency: s.settings.currency,
+      theme: s.settings.theme,
+      notes: s.settings.notes || "",
+      daily_habit_items: s.settings.dailyHabitItems || [],
+      habit_plans: s.settings.habitPlans || {},
+      important_note_items: s.settings.importantNoteItems || [],
+      daily_update_reminders_enabled: s.settings.dailyUpdateRemindersEnabled || false,
+      daily_update_reminder_times: s.settings.dailyUpdateReminderTimes || [],
+      ai_api_key: s.settings.aiApiKey || null,
+      ai_model_name: s.settings.aiModelName || null,
+      updated_at: new Date().toISOString(),
+    });
+    if (settingsErr) throw settingsErr;
+
+    // 3. Sync Categories
+    const localCatIds = new Set(s.categories.map((x) => x.id));
+    const catToDelete = (catRes.data || []).filter((x) => !localCatIds.has(x.id)).map((x) => x.id);
+    if (catToDelete.length > 0) {
+      const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("user_id", userId)
+        .in("id", catToDelete);
+      if (error) throw error;
+    }
+    if (s.categories.length > 0) {
+      const payload = s.categories.map((c) => ({
+        id: c.id,
+        user_id: userId,
+        name: c.name,
+        color: c.color,
+        icon: c.icon,
+      }));
+      const { error } = await supabase.from("categories").upsert(payload);
+      if (error) throw error;
+    }
+
+    // 4. Sync Expenses
+    const localExpIds = new Set(s.expenses.map((x) => x.id));
+    const expToDelete = (expRes.data || []).filter((x) => !localExpIds.has(x.id)).map((x) => x.id);
+    if (expToDelete.length > 0) {
+      const { error } = await supabase
+        .from("expenses")
+        .delete()
+        .eq("user_id", userId)
+        .in("id", expToDelete);
+      if (error) throw error;
+    }
+    if (s.expenses.length > 0) {
+      const payload = s.expenses.map((e) => ({
+        id: e.id,
+        user_id: userId,
+        category_id: e.categoryId || null,
+        amount: e.amount,
+        note: e.note || "",
+        date: e.date,
+        type: e.type || "cash-out",
+        created_at: e.createdAt || new Date().toISOString(),
+      }));
+      const { error } = await supabase.from("expenses").upsert(payload);
+      if (error) throw error;
+    }
+
+    // 5. Sync Budget Targets
+    const localTarIds = new Set(s.budgetTargets.map((x) => x.id));
+    const tarToDelete = (tarRes.data || []).filter((x) => !localTarIds.has(x.id)).map((x) => x.id);
+    if (tarToDelete.length > 0) {
+      const { error } = await supabase
+        .from("budget_targets")
+        .delete()
+        .eq("user_id", userId)
+        .in("id", tarToDelete);
+      if (error) throw error;
+    }
+    if (s.budgetTargets.length > 0) {
+      const payload = s.budgetTargets.map((t) => ({
+        id: t.id,
+        user_id: userId,
+        period: t.period,
+        amount: t.amount,
+      }));
+      const { error } = await supabase.from("budget_targets").upsert(payload);
+      if (error) throw error;
+    }
+
+    // 6. Sync Day Flags
+    const localDates = new Set(s.dayFlags.map((x) => x.date));
+    const datesToDelete = (flaRes.data || [])
+      .filter((x) => !localDates.has(x.date))
+      .map((x) => x.date);
+    if (datesToDelete.length > 0) {
+      const { error } = await supabase
+        .from("day_flags")
+        .delete()
+        .eq("user_id", userId)
+        .in("date", datesToDelete);
+      if (error) throw error;
+    }
+    if (s.dayFlags.length > 0) {
+      const payload = s.dayFlags.map((f) => ({
+        user_id: userId,
+        date: f.date,
+        met_target: f.metTarget,
+        label: f.label || "",
+        importance: f.importance || "normal",
+        emoji: f.emoji || "",
+        completed_habit_ids: f.completedHabitIds || [],
+      }));
+      const { error } = await supabase.from("day_flags").upsert(payload);
+      if (error) throw error;
+    }
+
+    // 7. Sync Day Goals
+    const localGoalIds = new Set(s.dayGoals.map((x) => x.id));
+    const goalsToDelete = (goaRes.data || [])
+      .filter((x) => !localGoalIds.has(x.id))
+      .map((x) => x.id);
+    if (goalsToDelete.length > 0) {
+      const { error } = await supabase
+        .from("day_goals")
+        .delete()
+        .eq("user_id", userId)
+        .in("id", goalsToDelete);
+      if (error) throw error;
+    }
+    if (s.dayGoals.length > 0) {
+      const payload = s.dayGoals.map((g) => ({
+        id: g.id,
+        user_id: userId,
+        date: g.date,
+        title: g.title,
+        done: g.done,
+      }));
+      const { error } = await supabase.from("day_goals").upsert(payload);
+      if (error) throw error;
+    }
+  }, []);
+
   const debouncedCloudUpsert = useCallback(() => {
     const uid = userIdRef.current;
     if (!uid || !cloud) return;
@@ -139,28 +306,14 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
       const s = stateRef.current;
       void (async () => {
         try {
-          const supabase = createBrowserSupabase();
-          const { error } = await supabase.from("spend_snapshots").upsert(
-            {
-              user_id: uid,
-              categories: s.categories,
-              expenses: s.expenses,
-              budget_targets: s.budgetTargets,
-              day_flags: s.dayFlags,
-              day_goals: s.dayGoals,
-              settings: s.settings,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id" },
-          );
-          if (error) throw error;
+          await pushFullStateToCloud(uid, s);
         } catch (e) {
           console.error(e);
           toast.error("Could not sync to Supabase.");
         }
       })();
     }, 800);
-  }, [cloud]);
+  }, [cloud, pushFullStateToCloud]);
 
   const patch = useCallback(
     (fn: (prev: GlobalState) => GlobalState, immediate = false): Promise<void> | void => {
@@ -176,21 +329,7 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         if (!uid || !cloud) return Promise.resolve();
         return (async () => {
           try {
-            const supabase = createBrowserSupabase();
-            const { error } = await supabase.from("spend_snapshots").upsert(
-              {
-                user_id: uid,
-                categories: next.categories,
-                expenses: next.expenses,
-                budget_targets: next.budgetTargets,
-                day_flags: next.dayFlags,
-                day_goals: next.dayGoals,
-                settings: next.settings,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "user_id" },
-            );
-            if (error) throw error;
+            await pushFullStateToCloud(uid, next);
           } catch (e) {
             console.error(e);
             throw e;
@@ -200,7 +339,7 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         debouncedCloudUpsert();
       }
     },
-    [cloud, debouncedCloudUpsert],
+    [cloud, debouncedCloudUpsert, pushFullStateToCloud],
   );
 
   const setCategories = useCallback(
@@ -317,79 +456,111 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         if (gate.cancelled || gate.timedOut) return;
         userIdRef.current = user.id;
 
-        const { data: row, error: rowErr } = await supabase
-          .from("spend_snapshots")
-          .select("categories,expenses,budget_targets,day_flags,day_goals,settings")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        // Fetch data from the 6 individual tables
+        const [catRes, expRes, tarRes, flaRes, goaRes, setRes] = await Promise.all([
+          supabase.from("categories").select("*").eq("user_id", user.id),
+          supabase.from("expenses").select("*").eq("user_id", user.id),
+          supabase.from("budget_targets").select("*").eq("user_id", user.id),
+          supabase.from("day_flags").select("*").eq("user_id", user.id),
+          supabase.from("day_goals").select("*").eq("user_id", user.id),
+          supabase.from("user_settings").select("*").eq("user_id", user.id).maybeSingle(),
+        ]);
 
         if (gate.cancelled || gate.timedOut) return;
-        if (rowErr) throw rowErr;
+        if (catRes.error) throw catRes.error;
+        if (expRes.error) throw expRes.error;
+        if (tarRes.error) throw tarRes.error;
+        if (flaRes.error) throw flaRes.error;
+        if (goaRes.error) throw goaRes.error;
+        if (setRes.error) throw setRes.error;
 
-        if (row) {
-          const remoteExpenses = (row.expenses as Expense[] | null) ?? [];
-          const local = readLocalSnapshot();
+        const remoteExpenses = expRes.data || [];
+        const local = readLocalSnapshot();
 
-          // If local has expenses but remote does not, sync local state to the cloud database
-          const shouldUploadLocal = local.expenses.length > 0 && remoteExpenses.length === 0;
-          if (shouldUploadLocal) {
-            const { error: syncErr } = await supabase.from("spend_snapshots").upsert({
-              user_id: user.id,
-              categories: local.categories,
-              expenses: local.expenses,
-              budget_targets: local.budgetTargets,
-              day_flags: local.dayFlags,
-              day_goals: local.dayGoals,
-              settings: local.settings,
-              updated_at: new Date().toISOString(),
-            });
-            if (syncErr) throw syncErr;
-            if (!gate.cancelled && !gate.timedOut) {
-              stateRef.current = local;
-              setState(local);
-              setCloud(true);
-              setReady(true);
-            }
-            return;
-          }
-
-          const next: GlobalState = {
-            categories: (row.categories as Category[] | null) ?? DEFAULT_CATEGORIES,
-            expenses: remoteExpenses,
-            budgetTargets: (row.budget_targets as BudgetTarget[] | null) ?? [],
-            dayFlags: (row.day_flags as DayFlag[] | null) ?? [],
-            dayGoals: (row.day_goals as DayGoal[] | null) ?? [],
-            settings: (row.settings as AppSettings | null) ?? DEFAULT_SETTINGS,
-          };
+        // If local has expenses but remote does not, sync local state to the cloud database
+        const shouldUploadLocal = local.expenses.length > 0 && remoteExpenses.length === 0;
+        if (shouldUploadLocal) {
+          await pushFullStateToCloud(user.id, local);
           if (!gate.cancelled && !gate.timedOut) {
-            stateRef.current = next;
-            setState(next);
-            writeLocalSnapshot(next);
+            stateRef.current = local;
+            setState(local);
             setCloud(true);
             setReady(true);
           }
           return;
         }
 
-        const local = readLocalSnapshot();
-        if (gate.cancelled || gate.timedOut) return;
-        stateRef.current = local;
-        setState(local);
-        writeLocalSnapshot(local);
+        // Map settings
+        const settings: AppSettings = setRes.data
+          ? {
+              currency: setRes.data.currency,
+              theme: setRes.data.theme as "light" | "dark" | "system",
+              notes: setRes.data.notes,
+              dailyHabitItems:
+                (setRes.data.daily_habit_items as unknown as ImportantNoteItem[] | null) ?? [],
+              habitPlans:
+                (setRes.data.habit_plans as unknown as Record<string, string> | null) ?? {},
+              importantNoteItems:
+                (setRes.data.important_note_items as unknown as ImportantNoteItem[] | null) ?? [],
+              dailyUpdateRemindersEnabled: setRes.data.daily_update_reminders_enabled,
+              dailyUpdateReminderTimes:
+                (setRes.data.daily_update_reminder_times as string[] | null) ?? [],
+              aiApiKey: setRes.data.ai_api_key ?? undefined,
+              aiModelName: setRes.data.ai_model_name ?? undefined,
+            }
+          : DEFAULT_SETTINGS;
 
-        const { error: insErr } = await supabase.from("spend_snapshots").insert({
-          user_id: user.id,
-          categories: local.categories,
-          expenses: local.expenses,
-          budget_targets: local.budgetTargets,
-          day_flags: local.dayFlags,
-          day_goals: local.dayGoals,
-          settings: local.settings,
-        });
+        // Map other collections
+        const next: GlobalState = {
+          categories:
+            catRes.data && catRes.data.length > 0
+              ? catRes.data.map((c) => ({
+                  id: c.id,
+                  name: c.name,
+                  color: c.color,
+                  icon: c.icon,
+                }))
+              : DEFAULT_CATEGORIES,
+          expenses: remoteExpenses.map((e) => ({
+            id: e.id,
+            amount: Number(e.amount),
+            categoryId: e.category_id || "",
+            note: e.note || "",
+            date: e.date,
+            createdAt: e.created_at,
+            type: e.type as "cash-in" | "cash-out",
+          })),
+          budgetTargets: (tarRes.data || []).map((t) => ({
+            id: t.id,
+            period: t.period as "daily" | "monthly" | "yearly",
+            amount: Number(t.amount),
+          })),
+          dayFlags: (flaRes.data || []).map((f) => ({
+            date: f.date,
+            metTarget: f.met_target,
+            label: f.label || "",
+            importance: f.importance as "normal" | "low" | "high",
+            emoji: f.emoji || "",
+            completedHabitIds: (f.completed_habit_ids as string[] | null) ?? [],
+          })),
+          dayGoals: (goaRes.data || []).map((g) => ({
+            id: g.id,
+            date: g.date,
+            title: g.title,
+            done: g.done,
+          })),
+          settings,
+        };
 
-        if (gate.cancelled || gate.timedOut) return;
-        if (insErr) throw insErr;
+        // If there's no settings row in the database, insert the full state (so the database gets initialized)
+        if (!setRes.data) {
+          await pushFullStateToCloud(user.id, next);
+        }
+
         if (!gate.cancelled && !gate.timedOut) {
+          stateRef.current = next;
+          setState(next);
+          writeLocalSnapshot(next);
           setCloud(true);
           setReady(true);
         }
@@ -432,7 +603,7 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
     return () => {
       gate.cancelled = true;
     };
-  }, []);
+  }, [pushFullStateToCloud]);
 
   const value = useMemo<Ctx>(
     () => ({
