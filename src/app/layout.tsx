@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
   },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
