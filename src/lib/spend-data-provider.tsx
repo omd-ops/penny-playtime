@@ -164,14 +164,11 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
 
   const patch = useCallback(
     (fn: (prev: GlobalState) => GlobalState, immediate = false): Promise<void> | void => {
-      let nextState: GlobalState | null = null;
-      setState((prev) => {
-        const next = fn(prev);
-        stateRef.current = next;
-        nextState = next;
-        writeLocalSnapshot(next);
-        return next;
-      });
+      const next = fn(stateRef.current);
+      stateRef.current = next;
+      writeLocalSnapshot(next);
+      setState(next);
+
       if (immediate) {
         if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
         pushTimerRef.current = null;
@@ -180,16 +177,15 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         return (async () => {
           try {
             const supabase = createBrowserSupabase();
-            const s = nextState || stateRef.current;
             const { error } = await supabase.from("spend_snapshots").upsert(
               {
                 user_id: uid,
-                categories: s.categories,
-                expenses: s.expenses,
-                budget_targets: s.budgetTargets,
-                day_flags: s.dayFlags,
-                day_goals: s.dayGoals,
-                settings: s.settings,
+                categories: next.categories,
+                expenses: next.expenses,
+                budget_targets: next.budgetTargets,
+                day_flags: next.dayFlags,
+                day_goals: next.dayGoals,
+                settings: next.settings,
                 updated_at: new Date().toISOString(),
               },
               { onConflict: "user_id" },
