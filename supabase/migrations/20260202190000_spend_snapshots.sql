@@ -132,16 +132,16 @@ BEGIN
   -- Insert default categories
   INSERT INTO public.categories (id, user_id, name, color, icon)
   VALUES
-    ('food', new.id, 'Food & Drinks', '#10b981', '🍔'),
-    ('transport', new.id, 'Transport', '#3b82f6', '🚌'),
-    ('shopping', new.id, 'Shopping', '#f59e0b', '🛍️'),
-    ('bills', new.id, 'Bills & Utilities', '#ef4444', '📱'),
-    ('entertainment', new.id, 'Entertainment', '#8b5cf6', '🎬'),
-    ('health', new.id, 'Health', '#ec4899', '💊'),
-    ('education', new.id, 'Education', '#06b6d4', '📚'),
-    ('salary', new.id, 'Salary', '#22c55e', '🤑'),
-    ('grooming', new.id, 'Grooming', '#f472b6', '✂️'),
-    ('other', new.id, 'Other', '#6b7280', '📦')
+    (gen_random_uuid()::text, new.id, 'Food & Drinks', '#10b981', '🍔'),
+    (gen_random_uuid()::text, new.id, 'Transport', '#3b82f6', '🚌'),
+    (gen_random_uuid()::text, new.id, 'Shopping', '#f59e0b', '🛍️'),
+    (gen_random_uuid()::text, new.id, 'Bills & Utilities', '#ef4444', '📱'),
+    (gen_random_uuid()::text, new.id, 'Entertainment', '#8b5cf6', '🎬'),
+    (gen_random_uuid()::text, new.id, 'Health', '#ec4899', '💊'),
+    (gen_random_uuid()::text, new.id, 'Education', '#06b6d4', '📚'),
+    (gen_random_uuid()::text, new.id, 'Salary', '#22c55e', '🤑'),
+    (gen_random_uuid()::text, new.id, 'Grooming', '#f472b6', '✂️'),
+    (gen_random_uuid()::text, new.id, 'Other', '#6b7280', '📦')
   ON CONFLICT (user_id, name) DO NOTHING;
 
   RETURN new;
@@ -158,3 +158,11 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON public.expenses (user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON public.expenses (category_id);
 CREATE INDEX IF NOT EXISTS idx_day_goals_user_date ON public.day_goals (user_id, date);
+
+-- 5. Grant Privileges on Tables to API Roles
+GRANT ALL ON TABLE public.user_settings TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.categories TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.expenses TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.budget_targets TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.day_flags TO postgres, anon, authenticated, service_role;
+GRANT ALL ON TABLE public.day_goals TO postgres, anon, authenticated, service_role;
