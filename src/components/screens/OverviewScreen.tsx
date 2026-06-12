@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useExpenses, useCategories, useBudgetTargets, useSettings } from "@/lib/spend-store";
 import {
   getExpensesForMonth,
@@ -24,6 +24,8 @@ export function OverviewScreen() {
   const [categories] = useCategories();
   const [targets] = useBudgetTargets();
   const [settings] = useSettings();
+
+  const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
 
   const today = todayStr();
   const now = useMemo(() => new Date(), []);
@@ -52,6 +54,11 @@ export function OverviewScreen() {
 
   // Tab-based visual representation of spends (weekly, monthly, yearly)
   const [periodTab, setPeriodTab] = useState<"weekly" | "monthly" | "yearly">("weekly");
+
+  // Reset selected bar when period tab changes
+  useEffect(() => {
+    setActiveBarIndex(null);
+  }, [periodTab]);
 
   // Calculations for Weekly (last 7 days rolling)
   const last7DaysData = useMemo(() => {
@@ -310,9 +317,18 @@ export function OverviewScreen() {
               return (
                 <Tooltip key={idx}>
                   <TooltipTrigger asChild>
-                    <div className="flex flex-1 flex-col items-center justify-end h-full gap-1 cursor-pointer">
+                    <div
+                      onClick={() => setActiveBarIndex(activeBarIndex === idx ? null : idx)}
+                      className="flex flex-1 flex-col items-center justify-end h-full gap-1 cursor-pointer"
+                    >
                       {/* Amount above the bar */}
-                      <span className="text-[9px] font-bold text-foreground/80 truncate max-w-full text-center">
+                      <span
+                        className={`text-[9px] font-bold text-foreground/80 truncate max-w-full text-center transition-opacity duration-200 ${
+                          activeBarIndex === idx
+                            ? "opacity-100 text-primary font-extrabold"
+                            : "opacity-0"
+                        }`}
+                      >
                         {d.amount > 0 ? formatCompactCurrency(d.amount, settings.currency) : "—"}
                       </span>
                       {/* Bar */}
