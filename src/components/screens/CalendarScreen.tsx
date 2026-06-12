@@ -242,8 +242,19 @@ export function CalendarScreen() {
 
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
+  const { totalMonthIn, totalMonthOut } = useMemo(() => {
+    let inTotal = 0;
+    let outTotal = 0;
+    dayRollups.forEach((roll) => {
+      inTotal += roll.credit;
+      outTotal += roll.debit;
+    });
+    return { totalMonthIn: inTotal, totalMonthOut: outTotal };
+  }, [dayRollups]);
+  const monthBalance = totalMonthIn - totalMonthOut;
+
   return (
-    <div className="mx-auto max-w-lg px-4 pt-6">
+    <div className="mx-auto max-w-lg px-4 pt-6 flex flex-col h-[calc(100dvh-5rem)] pb-4">
       <header className="mb-4 flex items-center justify-between">
         <button
           onClick={prevMonth}
@@ -272,9 +283,9 @@ export function CalendarScreen() {
       </div>
 
       {/* Calendar grid — day + colored out/in amounts (labels only in aria-label) */}
-      <div className="grid grid-cols-7 gap-1.5">
+      <div className="grid grid-cols-7 gap-1.5 flex-1 auto-rows-fr">
         {grid.map((cell, i) => {
-          if (!cell.inMonth) return <div key={i} className="min-h-[3.25rem]" aria-hidden />;
+          if (!cell.inMonth) return <div key={i} className="min-h-[4rem] h-full" aria-hidden />;
           const roll = dayRollups.get(cell.dateStr);
           const debited = roll?.debit ?? 0;
           const credited = roll?.credit ?? 0;
@@ -305,8 +316,8 @@ export function CalendarScreen() {
               onClick={() => setSelectedDate(cell.dateStr)}
               aria-label={ariaLabel}
               className={cn(
-                "relative flex w-full flex-col rounded-xl border border-border/40 px-1 py-1.5 text-left transition-colors",
-                cellTall ? "min-h-[7rem]" : "min-h-[3.25rem] justify-center",
+                "relative flex h-full w-full flex-col rounded-xl border border-border/40 px-1 py-1.5 text-left transition-colors",
+                cellTall ? "min-h-[7rem]" : "min-h-[4rem] justify-center",
                 isToday && "ring-2 ring-primary ring-inset",
                 "hover:bg-muted/80",
                 selectedDate === cell.dateStr && "bg-primary/10",
@@ -320,6 +331,18 @@ export function CalendarScreen() {
               >
                 {cell.day}
               </span>
+              <div className="flex flex-col items-center mt-1 space-y-0.5 text-[10px] shrink-0">
+                {hasIn && (
+                  <span className="text-emerald-600 font-medium">
+                    {formatCurrency(credited, settings.currency)}
+                  </span>
+                )}
+                {hasOut && (
+                  <span className="text-red-600 font-medium">
+                    {formatCurrency(debited, settings.currency)}
+                  </span>
+                )}
+              </div>
               {hasHabitLines && (
                 <ul
                   className={cn("mt-1 w-full min-h-0 flex-1 space-y-px overflow-hidden")}
@@ -347,9 +370,46 @@ export function CalendarScreen() {
                   aria-hidden
                 />
               )}
+              {flag?.emoji && (
+                <span
+                  className={cn(
+                    "absolute top-1 text-xs leading-none",
+                    flag?.metTarget || anyCustomGoalDone ? "right-4" : "right-1",
+                  )}
+                  aria-hidden
+                >
+                  {flag.emoji}
+                </span>
+              )}
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 divide-x divide-border rounded-xl border border-border/40 bg-card text-center overflow-hidden shrink-0 shadow-sm">
+        <div className="flex flex-col py-2">
+          <span className="text-[11px] font-semibold text-emerald-600">Total Cash In</span>
+          <span className="text-sm font-bold text-emerald-600">
+            {formatCurrency(totalMonthIn, settings.currency)}
+          </span>
+        </div>
+        <div className="flex flex-col py-2">
+          <span className="text-[11px] font-semibold text-red-600">Total Cash Out</span>
+          <span className="text-sm font-bold text-red-600">
+            {formatCurrency(totalMonthOut, settings.currency)}
+          </span>
+        </div>
+        <div className="flex flex-col py-2">
+          <span className="text-[11px] font-semibold text-foreground">Balance</span>
+          <span
+            className={cn(
+              "text-sm font-bold",
+              monthBalance >= 0 ? "text-emerald-600" : "text-red-600",
+            )}
+          >
+            {formatCurrency(monthBalance, settings.currency)}
+          </span>
+        </div>
       </div>
 
       {/* Day detail sheet */}
@@ -573,10 +633,12 @@ export function CalendarScreen() {
                         <span className="text-lg">{cat?.icon || "📦"}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {cat?.name || "Unknown"}
+                            {exp.note ? exp.note : cat?.name || "Unknown"}
                           </p>
                           {exp.note && (
-                            <p className="text-xs text-muted-foreground truncate">{exp.note}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {cat?.name || "Unknown"}
+                            </p>
                           )}
                         </div>
                         <span

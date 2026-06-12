@@ -72,6 +72,10 @@ export interface AppSettings {
   aiApiKey?: string;
   /** Custom Gemini model name for the AI agent */
   aiModelName?: string;
+  /** Whether the AI agent floating button is hidden completely */
+  aiAgentHidden?: boolean;
+  /** Whether the AI agent floating button is collapsed to the edge */
+  aiAgentCollapsed?: boolean;
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -90,7 +94,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
 export const DEFAULT_DAILY_REMINDER_TIMES = ["09:00", "14:00", "19:00"] as const;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  currency: "$",
+  currency: "₹",
   theme: "system",
   notes: "",
   dailyHabitItems: [],
@@ -98,6 +102,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   importantNoteItems: [],
   dailyUpdateRemindersEnabled: false,
   dailyUpdateReminderTimes: [...DEFAULT_DAILY_REMINDER_TIMES],
+  aiAgentHidden: false,
+  aiAgentCollapsed: false,
 };
 
 const HH_MM = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -120,6 +126,25 @@ export function generateId() {
 
 export function formatCurrency(amount: number, currency: string) {
   return `${currency}${amount.toFixed(2)}`;
+}
+
+export function formatCompactCurrency(amount: number, currency: string) {
+  if (amount === 0) return "—";
+  let formattedNum = "";
+  if (amount >= 100000) {
+    formattedNum = new Intl.NumberFormat("en-IN", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(amount);
+  } else if (amount >= 1000) {
+    formattedNum = new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(amount);
+  } else {
+    formattedNum = amount % 1 === 0 ? String(amount) : amount.toFixed(0);
+  }
+  return `${currency}${formattedNum}`;
 }
 
 export function todayStr() {

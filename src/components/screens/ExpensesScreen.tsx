@@ -54,14 +54,37 @@ export function ExpensesScreen() {
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [dateFilter, setDateFilter] = useState<"all" | "daily" | "weekly" | "monthly" | "yearly">(
+    "all",
+  );
 
   const hasActiveFilters =
-    searchQuery !== "" || filterType !== "all" || filterCategory !== "all" || sortOrder !== "desc";
+    searchQuery !== "" ||
+    filterType !== "all" ||
+    filterCategory !== "all" ||
+    sortOrder !== "desc" ||
+    dateFilter !== "all";
 
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   const filtered = useMemo(() => {
+    const todayDateStr = todayStr();
+    const currentMonth = todayDateStr.substring(0, 7);
+    const currentYear = todayDateStr.substring(0, 4);
+    const todayObj = new Date(todayDateStr + "T12:00:00");
+    const sevenDaysAgoObj = new Date(todayObj);
+    sevenDaysAgoObj.setDate(todayObj.getDate() - 7);
+
     return expenses.filter((exp) => {
+      // Date filters
+      if (dateFilter === "daily" && exp.date !== todayDateStr) return false;
+      if (dateFilter === "weekly") {
+        const expD = new Date(exp.date + "T12:00:00");
+        if (expD < sevenDaysAgoObj || expD > todayObj) return false;
+      }
+      if (dateFilter === "monthly" && !exp.date.startsWith(currentMonth)) return false;
+      if (dateFilter === "yearly" && !exp.date.startsWith(currentYear)) return false;
+
       // 1. Search Query filter (matches note or category name)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
@@ -85,7 +108,7 @@ export function ExpensesScreen() {
 
       return true;
     });
-  }, [expenses, searchQuery, filterType, filterCategory, catMap]);
+  }, [expenses, searchQuery, filterType, filterCategory, dateFilter, catMap]);
 
   const sorted = useMemo(
     () =>
@@ -276,6 +299,7 @@ export function ExpensesScreen() {
                       setFilterType("all");
                       setFilterCategory("all");
                       setSortOrder("desc");
+                      setDateFilter("all");
                     }}
                     className="text-xs text-primary hover:underline font-semibold"
                   >
@@ -285,6 +309,22 @@ export function ExpensesScreen() {
               )}
             </div>
           )}
+
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none pt-1">
+            {(["all", "daily", "weekly", "monthly", "yearly"] as const).map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setDateFilter(filter)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${
+                  dateFilter === filter
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-muted-foreground border-border/50 hover:bg-muted"
+                }`}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -311,6 +351,7 @@ export function ExpensesScreen() {
               setFilterType("all");
               setFilterCategory("all");
               setSortOrder("desc");
+              setDateFilter("all");
             }}
             className="mt-4 text-xs font-semibold rounded-lg border-border/50"
           >

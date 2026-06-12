@@ -35,7 +35,11 @@ import {
   ChevronRight,
   FileSpreadsheet,
   Search,
+  Download,
+  FileText,
+  Sparkles,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { DailyUpdateReminderSettings } from "@/components/DailyUpdateReminderSettings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -295,13 +299,71 @@ export function SettingsScreen() {
     }
   };
 
+  const exportToExcel = async () => {
+    try {
+      const xlsx = await import("xlsx");
+      const exportData = expenses.map((e) => {
+        const cat = categories.find((c) => c.id === e.categoryId);
+        return {
+          Date: e.date,
+          Category: cat ? cat.name : "Unknown",
+          Type: e.type === "cash-in" ? "Cash In" : "Cash Out",
+          Amount: e.amount,
+          Notes: e.note,
+        };
+      });
+
+      const worksheet = xlsx.utils.json_to_sheet(exportData);
+      const workbook = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(workbook, worksheet, "Expenses");
+      xlsx.writeFile(workbook, "penny_pay_export.xlsx");
+      toast.success("Excel exported successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export to Excel");
+    }
+  };
+
+  const exportToPdf = async () => {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+      const doc = new jsPDF();
+
+      const tableColumn = ["Date", "Category", "Type", "Amount", "Notes"];
+      const tableRows: any[] = [];
+
+      expenses.forEach((e) => {
+        const cat = categories.find((c) => c.id === e.categoryId);
+        const rowData = [
+          e.date,
+          cat ? cat.name : "Unknown",
+          e.type === "cash-in" ? "Cash In" : "Cash Out",
+          e.amount,
+          e.note,
+        ];
+        tableRows.push(rowData);
+      });
+
+      doc.text("Penny Pay - Expenses Export", 14, 15);
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 20,
+      });
+      doc.save("penny_pay_export.pdf");
+      toast.success("PDF exported successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export to PDF");
+    }
+  };
+
   const themeOptions: { value: "light" | "dark" | "system"; icon: typeof Sun; label: string }[] = [
     { value: "light", icon: Sun, label: "Light" },
     { value: "dark", icon: Moon, label: "Dark" },
     { value: "system", icon: Monitor, label: "System" },
   ];
-
-  const currencyOptions = ["$", "€", "£", "¥", "₹", "₿"];
 
   return (
     <div className="mx-auto max-w-lg px-4 pt-6 pb-4">
@@ -326,29 +388,6 @@ export function SettingsScreen() {
             >
               <opt.icon className="h-4 w-4" />
               {opt.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Currency */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Currency
-        </h2>
-        <div className="flex gap-2 flex-wrap">
-          {currencyOptions.map((c) => (
-            <button
-              key={c}
-              onClick={() => setSettings((prev) => ({ ...prev, currency: c }))}
-              className={cn(
-                "min-h-[44px] min-w-[44px] rounded-xl border text-sm font-semibold transition-colors",
-                settings.currency === c
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-foreground border-border/50 hover:border-primary/50",
-              )}
-            >
-              {c}
             </button>
           ))}
         </div>
@@ -413,6 +452,51 @@ export function SettingsScreen() {
           <p className="text-[10px] text-muted-foreground leading-tight">
             These credentials are saved locally in your browser. Leave blank to use server defaults.
           </p>
+        </div>
+      </section>
+
+      {/* Floating AI Agent Button Settings */}
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Floating AI Assistant Button
+        </h2>
+        <div className="rounded-xl bg-card border border-border/50 p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <span className="text-sm font-medium text-foreground">Enable floating button</span>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Show the draggable AssistiveTouch-style AI agent button on the screen.
+              </p>
+            </div>
+            <Switch
+              checked={!settings.aiAgentHidden}
+              onCheckedChange={(checked) =>
+                setSettings((prev) => ({ ...prev, aiAgentHidden: !checked }))
+              }
+              className="shrink-0"
+              aria-label="Toggle floating AI assistant button"
+            />
+          </div>
+          {!settings.aiAgentHidden && (
+            <p className="text-xs text-muted-foreground leading-snug border-t border-border/30 pt-3">
+              💡 **Tips:** Drag the button anywhere on the screen. Double-click it to
+              minimize/collapse it to the edge. Drag it to the bottom center of the screen to hide
+              it.
+            </p>
+          )}
+          {!settings.aiAgentHidden && settings.aiAgentCollapsed && (
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/30">
+              <span className="text-xs text-muted-foreground">Currently minimized</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSettings((prev) => ({ ...prev, aiAgentCollapsed: false }))}
+                className="h-8 text-xs rounded-lg"
+              >
+                Expand Button
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -526,6 +610,41 @@ export function SettingsScreen() {
               <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
             </div>
           </label>
+        </div>
+      </section>
+
+      {/* Export Data */}
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          Export Data
+        </h2>
+        <div className="space-y-2">
+          <div
+            onClick={exportToExcel}
+            className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+              <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Export as Excel</p>
+              <p className="text-xs text-muted-foreground">Download your data in .xlsx format</p>
+            </div>
+            <Download className="ml-auto h-4 w-4 text-muted-foreground" />
+          </div>
+          <div
+            onClick={exportToPdf}
+            className="flex items-center gap-3 rounded-xl bg-card p-3 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Export as PDF</p>
+              <p className="text-xs text-muted-foreground">Download your data in .pdf format</p>
+            </div>
+            <Download className="ml-auto h-4 w-4 text-muted-foreground" />
+          </div>
         </div>
       </section>
 
