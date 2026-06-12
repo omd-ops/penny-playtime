@@ -28,34 +28,189 @@ export type Database = {
   };
   public: {
     Tables: {
-      spend_snapshots: {
+      budget_targets: {
         Row: {
-          budget_targets: Json;
-          categories: Json;
-          day_flags: Json;
-          day_goals: Json;
-          expenses: Json;
-          settings: Json;
+          amount: number;
+          id: string;
+          period: string;
+          user_id: string;
+        };
+        Insert: {
+          amount: number;
+          id: string;
+          period: string;
+          user_id: string;
+        };
+        Update: {
+          amount?: number;
+          id?: string;
+          period?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      categories: {
+        Row: {
+          color: string;
+          created_at: string;
+          icon: string;
+          id: string;
+          name: string;
+          user_id: string;
+        };
+        Insert: {
+          color: string;
+          created_at?: string;
+          icon: string;
+          id: string;
+          name: string;
+          user_id: string;
+        };
+        Update: {
+          color?: string;
+          created_at?: string;
+          icon?: string;
+          id?: string;
+          name?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      day_flags: {
+        Row: {
+          completed_habit_ids: Json;
+          date: string;
+          emoji: string | null;
+          importance: string | null;
+          label: string | null;
+          met_target: boolean;
+          user_id: string;
+        };
+        Insert: {
+          completed_habit_ids?: Json;
+          date: string;
+          emoji?: string | null;
+          importance?: string | null;
+          label?: string | null;
+          met_target?: boolean;
+          user_id: string;
+        };
+        Update: {
+          completed_habit_ids?: Json;
+          date?: string;
+          emoji?: string | null;
+          importance?: string | null;
+          label?: string | null;
+          met_target?: boolean;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      day_goals: {
+        Row: {
+          date: string;
+          done: boolean;
+          id: string;
+          title: string;
+          user_id: string;
+        };
+        Insert: {
+          date: string;
+          done?: boolean;
+          id: string;
+          title: string;
+          user_id: string;
+        };
+        Update: {
+          date?: string;
+          done?: boolean;
+          id?: string;
+          title?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      expenses: {
+        Row: {
+          amount: number;
+          category_id: string | null;
+          created_at: string;
+          date: string;
+          id: string;
+          note: string | null;
+          type: string;
+          user_id: string;
+        };
+        Insert: {
+          amount: number;
+          category_id?: string | null;
+          created_at?: string;
+          date: string;
+          id: string;
+          note?: string | null;
+          type?: string;
+          user_id: string;
+        };
+        Update: {
+          amount?: number;
+          category_id?: string | null;
+          created_at?: string;
+          date?: string;
+          id?: string;
+          note?: string | null;
+          type?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_settings: {
+        Row: {
+          ai_api_key: string | null;
+          ai_model_name: string | null;
+          currency: string;
+          daily_habit_items: Json;
+          daily_update_reminder_times: Json;
+          daily_update_reminders_enabled: boolean;
+          habit_plans: Json;
+          important_note_items: Json;
+          notes: string;
+          theme: string;
           updated_at: string;
           user_id: string;
         };
         Insert: {
-          budget_targets?: Json;
-          categories?: Json;
-          day_flags?: Json;
-          day_goals?: Json;
-          expenses?: Json;
-          settings?: Json;
+          ai_api_key?: string | null;
+          ai_model_name?: string | null;
+          currency?: string;
+          daily_habit_items?: Json;
+          daily_update_reminder_times?: Json;
+          daily_update_reminders_enabled?: boolean;
+          habit_plans?: Json;
+          important_note_items?: Json;
+          notes?: string;
+          theme?: string;
           updated_at?: string;
           user_id: string;
         };
         Update: {
-          budget_targets?: Json;
-          categories?: Json;
-          day_flags?: Json;
-          day_goals?: Json;
-          expenses?: Json;
-          settings?: Json;
+          ai_api_key?: string | null;
+          ai_model_name?: string | null;
+          currency?: string;
+          daily_habit_items?: Json;
+          daily_update_reminder_times?: Json;
+          daily_update_reminders_enabled?: boolean;
+          habit_plans?: Json;
+          important_note_items?: Json;
+          notes?: string;
+          theme?: string;
           updated_at?: string;
           user_id?: string;
         };
