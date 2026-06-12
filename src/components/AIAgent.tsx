@@ -14,6 +14,9 @@ import {
   Clock,
   CheckSquare,
   TrendingUp,
+  Minus,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -134,6 +137,29 @@ export function AIAgent() {
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // AssistiveTouch floating button states
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isNearDropZone, setIsNearDropZone] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0, time: 0 });
+
+  // DOM ref to the main button to handle pointer capture transfer
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Edge-hiding states
+  const [hiddenEdge, setHiddenEdgeState] = useState<"left" | "right" | "top" | "bottom" | null>(
+    null,
+  );
+  const setHiddenEdge = (edge: "left" | "right" | "top" | "bottom" | null) => {
+    setHiddenEdgeState(edge);
+    if (edge) {
+      localStorage.setItem("et_ai_agent_hidden_edge", edge);
+    } else {
+      localStorage.removeItem("et_ai_agent_hidden_edge");
+    }
+  };
+
   // SpendWise global state hooks
   const [categories, setCategories] = useCategories();
   const [, setExpenses] = useExpenses();
@@ -141,6 +167,262 @@ export function AIAgent() {
   const [, setDayGoals] = useDayGoals();
   const [settings, setSettings] = useSettings();
   const [, setBudgetTargets] = useBudgetTargets();
+
+  // Load position and hidden edge status from localStorage on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedEdge = localStorage.getItem("et_ai_agent_hidden_edge");
+    if (
+      savedEdge === "left" ||
+      savedEdge === "right" ||
+      savedEdge === "top" ||
+      savedEdge === "bottom"
+    ) {
+      setHiddenEdgeState(savedEdge);
+    }
+
+    const saved = localStorage.getItem("et_ai_agent_pos");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+          const buttonSize = 56;
+          const margin = 16;
+          const clampedX = Math.max(
+            margin,
+            Math.min(window.innerWidth - buttonSize - margin, parsed.x),
+          );
+          const clampedY = Math.max(
+            margin,
+            Math.min(window.innerHeight - buttonSize - margin, parsed.y),
+          );
+          setPosition({ x: clampedX, y: clampedY });
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to parse saved position", e);
+      }
+    }
+
+    // Default position: bottom right above the bottom nav
+    const buttonSize = 56;
+    const margin = 16;
+    const defaultX = window.innerWidth - buttonSize - margin;
+    const defaultY = window.innerHeight - 80 - buttonSize;
+    setPosition({ x: defaultX, y: defaultY });
+  }, []);
+
+  // Update clamped position on window resize
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => {
+      setPosition((pos) => {
+        if (!pos) return pos;
+        const buttonSize = 56;
+        const margin = 16;
+        const clampedX = Math.max(margin, Math.min(window.innerWidth - buttonSize - margin, pos.x));
+        const clampedY = Math.max(
+          margin,
+          Math.min(window.innerHeight - buttonSize - margin, pos.y),
+        );
+        return { x: clampedX, y: clampedY };
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return; // Only left click / touch primary pointer
+    e.preventDefault();
+
+    setIsDragging(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragOffset.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now(),
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isDragging || !position) return;
+
+    const buttonSize = 56;
+
+    let newX = e.clientX - dragOffset.current.x;
+    let newY = e.clientY - dragOffset.current.y;
+
+    // Allow dragging outside the viewport to trigger hide
+    // We keep a small portion (12px) visible during drag so the user can see it
+    newX = Math.max(-buttonSize + 12, Math.min(window.innerWidth - 12, newX));
+    newY = Math.max(-buttonSize + 12, Math.min(window.innerHeight - 12, newY));
+
+    setPosition({ x: newX, y: newY });
+
+    // Check if near drag-to-hide drop zone (bottom center)
+    const dropZoneX = window.innerWidth / 2;
+    const dropZoneY = window.innerHeight - 80;
+    const distance = Math.hypot(
+      newX + buttonSize / 2 - dropZoneX,
+      newY + buttonSize / 2 - dropZoneY,
+    );
+    setIsNearDropZone(distance < 80);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
+    if (!position) return;
+
+    // Determine click vs drag: small delta and short time
+    const deltaX = Math.abs(e.clientX - dragStart.current.x);
+    const deltaY = Math.abs(e.clientY - dragStart.current.y);
+    const duration = Date.now() - dragStart.current.time;
+
+    if (deltaX < 5 && deltaY < 5 && duration < 200) {
+      setIsOpen(true);
+      return;
+    }
+
+    const buttonSize = 56;
+
+    // 1. Check if dragged past the screen boundary (to hide on that edge)
+    // Threshold is: if the button is pushed so that less than 16px is visible on screen
+    if (position.x <= -buttonSize + 16) {
+      setHiddenEdge("left");
+      setIsNearDropZone(false);
+      toast.success(
+        "AI Assistant hidden on left edge. Drag inward from the left screen edge to bring it back.",
+      );
+      return;
+    }
+    if (position.x >= window.innerWidth - 16) {
+      setHiddenEdge("right");
+      setIsNearDropZone(false);
+      toast.success(
+        "AI Assistant hidden on right edge. Drag inward from the right screen edge to bring it back.",
+      );
+      return;
+    }
+    if (position.y <= -buttonSize + 16) {
+      setHiddenEdge("top");
+      setIsNearDropZone(false);
+      toast.success(
+        "AI Assistant hidden on top edge. Drag inward from the top screen edge to bring it back.",
+      );
+      return;
+    }
+    if (position.y >= window.innerHeight - 16) {
+      setHiddenEdge("bottom");
+      setIsNearDropZone(false);
+      toast.success(
+        "AI Assistant hidden on bottom edge. Drag inward from the bottom screen edge to bring it back.",
+      );
+      return;
+    }
+
+    // 2. Check if button is dropped in the bottom-center hide drop zone
+    const dropZoneX = window.innerWidth / 2;
+    const dropZoneY = window.innerHeight - 80;
+    const distance = Math.hypot(
+      position.x + buttonSize / 2 - dropZoneX,
+      position.y + buttonSize / 2 - dropZoneY,
+    );
+
+    if (distance < 80) {
+      setSettings((prev) => ({ ...prev, aiAgentHidden: true }));
+      toast.success("AI Agent button hidden. You can show it again in Settings.", {
+        action: {
+          label: "Undo",
+          onClick: () => setSettings((prev) => ({ ...prev, aiAgentHidden: false })),
+        },
+      });
+      setIsNearDropZone(false);
+      return;
+    }
+
+    // 3. Normal Snapping to nearest horizontal edge (AssistiveTouch style)
+    const margin = 16;
+    const midX = window.innerWidth / 2;
+    let finalX = position.x;
+
+    if (position.x + buttonSize / 2 < midX) {
+      finalX = margin; // Snap to left
+    } else {
+      finalX = window.innerWidth - buttonSize - margin; // Snap to right
+    }
+
+    const finalPos = { x: finalX, y: position.y };
+    setPosition(finalPos);
+    localStorage.setItem("et_ai_agent_pos", JSON.stringify(finalPos));
+  };
+
+  const handlePullIn = (
+    e: React.PointerEvent<HTMLDivElement>,
+    edge: "left" | "right" | "top" | "bottom",
+  ) => {
+    e.preventDefault();
+    setHiddenEdge(null);
+
+    const buttonSize = 56;
+    let initialX = e.clientX - buttonSize / 2;
+    let initialY = e.clientY - buttonSize / 2;
+
+    // Position the button on-screen near the edge from which we are pulling
+    if (edge === "left") {
+      initialX = 16;
+    } else if (edge === "right") {
+      initialX = window.innerWidth - buttonSize - 16;
+    } else if (edge === "top") {
+      initialY = 16;
+    } else if (edge === "bottom") {
+      initialY = window.innerHeight - buttonSize - 80;
+    }
+
+    setPosition({ x: initialX, y: initialY });
+    setIsDragging(true);
+
+    // Center dragging offsets
+    dragOffset.current = {
+      x: buttonSize / 2,
+      y: buttonSize / 2,
+    };
+
+    // Set dragging start details
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now(),
+    };
+
+    // Use a microtask to let React render the button, then transfer pointer capture
+    setTimeout(() => {
+      if (buttonRef.current) {
+        try {
+          buttonRef.current.setPointerCapture(e.pointerId);
+        } catch (err) {
+          console.error("Pointer capture transfer failed", err);
+        }
+      }
+    }, 0);
+  };
+
+  const handleCollapse = () => {
+    setSettings((prev) => ({ ...prev, aiAgentCollapsed: true }));
+    toast.success("AI Agent button minimized to edge. Tap to expand.");
+  };
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -559,16 +841,125 @@ export function AIAgent() {
     return cat ? { name: cat.name, icon: cat.icon } : { name: "Other", icon: "📦" };
   };
 
+  if (settings.aiAgentHidden) return null;
+
+  const isLeft = position ? position.x < window.innerWidth / 2 : false;
+
   return (
     <>
-      {/* Floating Glowing AI Button */}
+      {/* Edge Target Zone (when hidden on an edge) */}
+      {hiddenEdge && (
+        <div
+          onPointerDown={(e) => handlePullIn(e, hiddenEdge)}
+          className={cn(
+            "fixed z-50 transition-all duration-300 flex items-center justify-center cursor-pointer select-none group",
+            hiddenEdge === "left" &&
+              "left-0 top-0 bottom-0 w-3 hover:w-5 bg-violet-600/10 hover:bg-violet-600/30 active:bg-violet-600/50",
+            hiddenEdge === "right" &&
+              "right-0 top-0 bottom-0 w-3 hover:w-5 bg-violet-600/10 hover:bg-violet-600/30 active:bg-violet-600/50",
+            hiddenEdge === "top" &&
+              "top-0 left-0 right-0 h-3 hover:h-5 bg-violet-600/10 hover:bg-violet-600/30 active:bg-violet-600/50",
+            hiddenEdge === "bottom" &&
+              "bottom-0 left-0 right-0 h-3 hover:h-5 bg-violet-600/10 hover:bg-violet-600/30 active:bg-violet-600/50",
+          )}
+          title={`Drag inward from the ${hiddenEdge} to restore AI assistant`}
+        >
+          <div
+            className={cn(
+              "rounded-full bg-violet-500/50 group-hover:bg-violet-500/80 transition-all shadow-[0_0_10px_rgba(139,92,246,0.3)]",
+              hiddenEdge === "left" || hiddenEdge === "right" ? "h-12 w-1.5" : "w-12 h-1.5",
+            )}
+          />
+        </div>
+      )}
+
+      {/* Collapsed Edge Tab (when collapsed, but not edge-hidden) */}
+      {!hiddenEdge && settings.aiAgentCollapsed && (
+        <button
+          onClick={() => {
+            setSettings((prev) => ({ ...prev, aiAgentCollapsed: false }));
+          }}
+          style={
+            position
+              ? {
+                  top: `${position.y}px`,
+                  left: isLeft ? "0px" : "auto",
+                  right: isLeft ? "auto" : "0px",
+                }
+              : undefined
+          }
+          className={cn(
+            "fixed z-50 flex h-14 w-6 items-center justify-center bg-violet-600/90 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)] hover:bg-violet-700 active:scale-95 transition-all duration-300",
+            isLeft
+              ? "rounded-r-xl border-y border-r border-violet-500/30"
+              : "rounded-l-xl border-y border-l border-violet-500/30",
+          )}
+          aria-label="Expand AI Assistant"
+        >
+          {isLeft ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+      )}
+
+      {/* Floating Glowing AI Button (always rendered but hidden off-screen if collapsed or hiddenEdge is active) */}
       <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.6)] hover:bg-violet-700 active:scale-95 transition-all duration-300 group"
+        ref={buttonRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onDoubleClick={handleCollapse}
+        style={
+          position
+            ? {
+                left: hiddenEdge || settings.aiAgentCollapsed ? "-9999px" : `${position.x}px`,
+                top: hiddenEdge || settings.aiAgentCollapsed ? "-9999px" : `${position.y}px`,
+                touchAction: "none",
+                transition: isDragging
+                  ? "none"
+                  : "left 0.3s cubic-bezier(0.16, 1, 0.3, 1), top 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s, opacity 0.3s",
+              }
+            : {
+                touchAction: "none",
+              }
+        }
+        className={cn(
+          "fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.6)] hover:bg-violet-700 active:scale-95 transition-all duration-300 group select-none",
+          isDragging
+            ? "scale-105 opacity-90 cursor-grabbing animate-none"
+            : "opacity-60 hover:opacity-100 focus:opacity-100",
+        )}
         aria-label="Open AI Assistant"
       >
-        <Sparkles className="h-6 w-6 animate-pulse group-hover:scale-110 transition-transform" />
+        <Sparkles className="h-6 w-6 animate-pulse group-hover:scale-110 transition-transform pointer-events-none" />
       </button>
+
+      {/* Drag to Hide Zone */}
+      {isDragging && !hiddenEdge && !settings.aiAgentCollapsed && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center justify-center pointer-events-none transition-all duration-300">
+          <div
+            className={cn(
+              "flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed transition-all duration-300",
+              isNearDropZone
+                ? "bg-red-500/20 border-red-500 scale-125 shadow-[0_0_25px_rgba(239,68,68,0.5)]"
+                : "bg-background/80 border-muted-foreground/40 scale-100",
+            )}
+          >
+            <X
+              className={cn(
+                "h-6 w-6",
+                isNearDropZone ? "text-red-500 animate-pulse" : "text-muted-foreground",
+              )}
+            />
+          </div>
+          <span
+            className={cn(
+              "text-xs font-semibold mt-1 transition-colors px-2 py-0.5 rounded-md bg-background/50 backdrop-blur-sm shadow-sm",
+              isNearDropZone ? "text-red-500" : "text-muted-foreground",
+            )}
+          >
+            Drag here to hide
+          </span>
+        </div>
+      )}
 
       {/* AI Assistant Sheet */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>

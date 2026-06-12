@@ -72,6 +72,10 @@ export interface AppSettings {
   aiApiKey?: string;
   /** Custom Gemini model name for the AI agent */
   aiModelName?: string;
+  /** Whether the AI agent floating button is hidden completely */
+  aiAgentHidden?: boolean;
+  /** Whether the AI agent floating button is collapsed to the edge */
+  aiAgentCollapsed?: boolean;
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -98,6 +102,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   importantNoteItems: [],
   dailyUpdateRemindersEnabled: false,
   dailyUpdateReminderTimes: [...DEFAULT_DAILY_REMINDER_TIMES],
+  aiAgentHidden: false,
+  aiAgentCollapsed: false,
 };
 
 const HH_MM = /^([01]\d|2[0-3]):([0-5]\d)$/;
