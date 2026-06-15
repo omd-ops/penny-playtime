@@ -23,6 +23,7 @@ import {
 } from "@/lib/store";
 import { BudgetBar } from "@/components/BudgetBar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { StreakModal } from "@/components/StreakModal";
 import { TrendingUp, TrendingDown, Minus, Wallet } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -38,6 +39,7 @@ export function OverviewScreen() {
   }, [dayFlags, settings.dailyHabitItems]);
 
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
 
   const today = todayStr();
   const now = useMemo(() => new Date(), []);
@@ -261,7 +263,10 @@ export function OverviewScreen() {
 
       {/* Habit Streak Card */}
       {(streaks.currentStreak > 0 || streaks.longestStreak > 0) && (
-        <div className="mb-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent p-5 shadow-sm border border-amber-500/20">
+        <div
+          onClick={() => setIsStreakModalOpen(true)}
+          className="mb-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent p-5 shadow-sm border border-amber-500/20 cursor-pointer hover:shadow-md transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
@@ -469,6 +474,7 @@ export function OverviewScreen() {
           </div>
         )}
       </div>
+      <StreakModal isOpen={isStreakModalOpen} onOpenChange={setIsStreakModalOpen} />
     </div>
   );
 }
