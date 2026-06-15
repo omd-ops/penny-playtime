@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useExpenses, useCategories, useBudgetTargets, useSettings } from "@/lib/spend-store";
+import {
+  useExpenses,
+  useCategories,
+  useBudgetTargets,
+  useSettings,
+  useDayFlags,
+} from "@/lib/spend-store";
 import {
   getExpensesForMonth,
   getExpensesForDate,
@@ -13,6 +19,7 @@ import {
   todayStr,
   getBudgetStatus,
   formatCompactCurrency,
+  calculateHabitStreaks,
 } from "@/lib/store";
 import { BudgetBar } from "@/components/BudgetBar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -24,6 +31,11 @@ export function OverviewScreen() {
   const [categories] = useCategories();
   const [targets] = useBudgetTargets();
   const [settings] = useSettings();
+  const [dayFlags] = useDayFlags();
+
+  const streaks = useMemo(() => {
+    return calculateHabitStreaks(dayFlags, settings.dailyHabitItems ?? []);
+  }, [dayFlags, settings.dailyHabitItems]);
 
   const [activeBarIndex, setActiveBarIndex] = useState<number | null>(null);
 
@@ -246,6 +258,36 @@ export function OverviewScreen() {
           </div>
         )}
       </div>
+
+      {/* Habit Streak Card */}
+      {(streaks.currentStreak > 0 || streaks.longestStreak > 0) && (
+        <div className="mb-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent p-5 shadow-sm border border-amber-500/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                Habit Streaks
+              </p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-foreground">
+                  🔥 {streaks.currentStreak}
+                </span>
+                <span className="text-sm text-muted-foreground">day current streak</span>
+              </div>
+              {streaks.longestStreak > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Personal best:{" "}
+                  <span className="font-semibold text-foreground">
+                    {streaks.longestStreak} days
+                  </span>
+                </p>
+              )}
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xl select-none">
+              ⚡
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Today's spending vs daily budget cap */}
       {dailyTarget && dailyTarget.amount > 0 ? (
