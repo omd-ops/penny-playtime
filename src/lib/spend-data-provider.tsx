@@ -22,6 +22,7 @@ import type {
 } from "./store";
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS as STORE_DEFAULT_SETTINGS } from "./store";
 import { createBrowserSupabase } from "@/lib/supabase/client";
+import { BoneyardSkeleton } from "@/components/BoneyardSkeleton";
 
 const DEFAULT_SETTINGS: AppSettings = STORE_DEFAULT_SETTINGS;
 
@@ -633,6 +634,10 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
     () => ({ settings: state.settings, setSettings }),
     [state.settings, setSettings],
   );
+
+  if (!ready) {
+    return <BoneyardSkeleton />;
+  }
 
   return (
     <CloudCtx.Provider value={cloudVal}>
