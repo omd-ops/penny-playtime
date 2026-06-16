@@ -20,6 +20,7 @@ import {
   todayStr,
   generateId,
   type DayGoal,
+  calculateHabitStreaks,
 } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/drawer";
 import { BudgetBar } from "@/components/BudgetBar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { StreakModal } from "@/components/StreakModal";
 import { ChevronLeft, ChevronRight, Check, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,8 +59,13 @@ export function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [importanceText, setImportanceText] = useState("");
   const [emojiText, setEmojiText] = useState("");
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
 
   const dailyTarget = getTargetForPeriod(targets, "daily");
+
+  const streaks = useMemo(() => {
+    return calculateHabitStreaks(dayFlags, settings.dailyHabitItems ?? []);
+  }, [dayFlags, settings.dailyHabitItems]);
 
   // Build calendar grid
   const grid = useMemo(() => {
@@ -263,7 +270,17 @@ export function CalendarScreen() {
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-lg font-bold text-foreground">{monthLabel}</h1>
+        <div className="flex flex-col items-center">
+          <h1 className="text-lg font-bold text-foreground leading-tight">{monthLabel}</h1>
+          {streaks.currentStreak > 0 && (
+            <button
+              onClick={() => setIsStreakModalOpen(true)}
+              className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5 hover:underline cursor-pointer focus:outline-none"
+            >
+              🔥 {streaks.currentStreak} day streak
+            </button>
+          )}
+        </div>
         <button
           onClick={nextMonth}
           className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -658,6 +675,7 @@ export function CalendarScreen() {
           </div>
         </DrawerContent>
       </Drawer>
+      <StreakModal isOpen={isStreakModalOpen} onOpenChange={setIsStreakModalOpen} />
     </div>
   );
 }
