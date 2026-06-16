@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import type { User } from "@supabase/supabase-js";
+import { LandingPage } from "@/components/LandingPage";
 import type {
   AppSettings,
   BudgetTarget,
@@ -99,7 +101,7 @@ function cleanupLegacyKeys() {
   }
 }
 
-const CloudCtx = createContext<{ ready: boolean; cloud: boolean } | null>(null);
+const CloudCtx = createContext<{ ready: boolean; cloud: boolean; user: User | null } | null>(null);
 const CategoriesCtx = createContext<{
   categories: Category[];
   setCategories: (u: Category[] | ((p: Category[]) => Category[])) => void;
@@ -131,6 +133,7 @@ const SettingsCtx = createContext<{
 export function SpendDataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [cloud, setCloud] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<GlobalState>(() => readLocalSnapshot());
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -414,63 +417,19 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
     [patch],
   );
 
-  useEffect(() => {
-    const gate = { cancelled: false, timedOut: false };
-    const INIT_TIMEOUT_MS = 30_000;
-
-    async function init() {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-      const supabaseKey =
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-        "";
-
-      if (!supabaseUrl || !supabaseKey) {
-        if (!gate.cancelled) {
-          setCloud(false);
-          setState(readLocalSnapshot());
-          setReady(true);
-        }
-        return;
-      }
-
-      async function runCloudInit() {
+  const loadUserData = useCallback(
+    async (userId: string) => {
+      try {
         const supabase = createBrowserSupabase();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (gate.cancelled || gate.timedOut) return;
-
-        if (!session) {
-          const { error: anonErr } = await supabase.auth.signInAnonymously();
-          if (anonErr) {
-            throw anonErr;
-          }
-        }
-        if (gate.cancelled || gate.timedOut) return;
-
-        const {
-          data: { user },
-          error: userErr,
-        } = await supabase.auth.getUser();
-        if (userErr || !user) {
-          throw userErr ?? new Error("No Supabase user");
-        }
-
-        if (gate.cancelled || gate.timedOut) return;
-        userIdRef.current = user.id;
-
-        // Fetch data from the 6 individual tables
         const [catRes, expRes, tarRes, flaRes, goaRes, setRes] = await Promise.all([
-          supabase.from("categories").select("*").eq("user_id", user.id),
-          supabase.from("expenses").select("*").eq("user_id", user.id),
-          supabase.from("budget_targets").select("*").eq("user_id", user.id),
-          supabase.from("day_flags").select("*").eq("user_id", user.id),
-          supabase.from("day_goals").select("*").eq("user_id", user.id),
-          supabase.from("user_settings").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("categories").select("*").eq("user_id", userId),
+          supabase.from("expenses").select("*").eq("user_id", userId),
+          supabase.from("budget_targets").select("*").eq("user_id", userId),
+          supabase.from("day_flags").select("*").eq("user_id", userId),
+          supabase.from("day_goals").select("*").eq("user_id", userId),
+          supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle(),
         ]);
 
-        if (gate.cancelled || gate.timedOut) return;
         if (catRes.error) throw catRes.error;
         if (expRes.error) throw expRes.error;
         if (tarRes.error) throw tarRes.error;
@@ -481,20 +440,16 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         const remoteExpenses = expRes.data || [];
         const local = readLocalSnapshot();
 
-        // If local has expenses but remote does not, sync local state to the cloud database
         const shouldUploadLocal = local.expenses.length > 0 && remoteExpenses.length === 0;
         if (shouldUploadLocal) {
-          await pushFullStateToCloud(user.id, local);
-          if (!gate.cancelled && !gate.timedOut) {
-            stateRef.current = local;
-            setState(local);
-            setCloud(true);
-            setReady(true);
-          }
+          await pushFullStateToCloud(userId, local);
+          stateRef.current = local;
+          setState(local);
+          setCloud(true);
+          setReady(true);
           return;
         }
 
-        // Map settings
         const settings: AppSettings = setRes.data
           ? {
               currency: setRes.data.currency,
@@ -514,7 +469,6 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
             }
           : DEFAULT_SETTINGS;
 
-        // Map other collections
         const next: GlobalState = {
           categories:
             catRes.data && catRes.data.length > 0
@@ -556,60 +510,86 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
           settings,
         };
 
-        // If there's no settings row in the database, insert the full state (so the database gets initialized)
         if (!setRes.data) {
-          await pushFullStateToCloud(user.id, next);
+          await pushFullStateToCloud(userId, next);
         }
 
-        if (!gate.cancelled && !gate.timedOut) {
-          stateRef.current = next;
-          setState(next);
-          writeLocalSnapshot(next);
-          setCloud(true);
-          setReady(true);
-        }
-      }
-
-      const cloudPromise = runCloudInit();
-      void cloudPromise.catch(() => {
-        /* handled in catch below; avoids unhandled rejection if timeout wins first */
-      });
-
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      try {
-        await Promise.race([
-          cloudPromise,
-          new Promise<never>((_, reject) => {
-            timeoutId = setTimeout(() => {
-              gate.timedOut = true;
-              reject(new Error("TIMEOUT"));
-            }, INIT_TIMEOUT_MS);
-          }),
-        ]);
+        stateRef.current = next;
+        setState(next);
+        writeLocalSnapshot(next);
+        setCloud(true);
+        setReady(true);
       } catch (e) {
-        console.error("Supabase init error:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
-        if (gate.cancelled) return;
-        const isTimeout = gate.timedOut && e instanceof Error && e.message === "TIMEOUT";
-        toast.error(
-          isTimeout
-            ? "Cloud sync is taking too long. Using this device only for now."
-            : "Cloud sync unavailable (enable Anonymous sign-in and run the SQL migration, or check env keys). Using this device only.",
-        );
+        console.error("Supabase load user data error:", e);
+        toast.error("Could not sync cloud data. Running offline.");
         setCloud(false);
         setState(readLocalSnapshot());
         setReady(true);
-      } finally {
-        if (timeoutId !== undefined) clearTimeout(timeoutId);
       }
+    },
+    [pushFullStateToCloud],
+  );
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    const supabaseKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      "";
+
+    if (!supabaseUrl || !supabaseKey) {
+      setCloud(false);
+      setState(readLocalSnapshot());
+      setReady(true);
+      return;
     }
 
-    void init();
-    return () => {
-      gate.cancelled = true;
-    };
-  }, [pushFullStateToCloud]);
+    const supabase = createBrowserSupabase();
 
-  const cloudVal = useMemo(() => ({ ready, cloud }), [ready, cloud]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        userIdRef.current = session.user.id;
+        void loadUserData(session.user.id);
+      } else {
+        setUser(null);
+        userIdRef.current = null;
+        setReady(true);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        setUser(session.user);
+        userIdRef.current = session.user.id;
+        void loadUserData(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        userIdRef.current = null;
+        const defaultState: GlobalState = {
+          categories: DEFAULT_CATEGORIES,
+          expenses: [],
+          budgetTargets: [],
+          dayFlags: [],
+          dayGoals: [],
+          settings: DEFAULT_SETTINGS,
+        };
+        stateRef.current = defaultState;
+        setState(defaultState);
+        writeLocalSnapshot(defaultState);
+        setCloud(false);
+        setReady(true);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadUserData]);
+
+  const cloudVal = useMemo(() => ({ ready, cloud, user }), [ready, cloud, user]);
   const categoriesVal = useMemo(
     () => ({ categories: state.categories, setCategories }),
     [state.categories, setCategories],
@@ -637,6 +617,16 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
 
   if (!ready) {
     return <BoneyardSkeleton />;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    "";
+
+  if (!user && supabaseUrl && supabaseKey) {
+    return <LandingPage />;
   }
 
   return (
@@ -704,8 +694,8 @@ export function useSettings(): [
   return [ctx.settings, ctx.setSettings];
 }
 
-export function useCloudStatus(): { ready: boolean; cloud: boolean } {
+export function useCloudStatus(): { ready: boolean; cloud: boolean; user: User | null } {
   const ctx = useContext(CloudCtx);
   if (!ctx) throw new Error("Must be used within SpendDataProvider");
-  return { ready: ctx.ready, cloud: ctx.cloud };
+  return { ready: ctx.ready, cloud: ctx.cloud, user: ctx.user };
 }

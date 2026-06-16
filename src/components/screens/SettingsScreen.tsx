@@ -9,6 +9,7 @@ import {
   useCloudStatus,
 } from "@/lib/spend-store";
 import { generateId, type Category, type BudgetTarget, type Expense } from "@/lib/store";
+import { createBrowserSupabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +39,7 @@ import {
   Download,
   FileText,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { DailyUpdateReminderSettings } from "@/components/DailyUpdateReminderSettings";
@@ -50,7 +52,7 @@ export function SettingsScreen() {
   const [settings, setSettings] = useSettings();
   const [expenses, setExpenses] = useExpenses();
   const { theme, setTheme, resolved } = useTheme();
-  const { cloud } = useCloudStatus();
+  const { cloud, user } = useCloudStatus();
 
   const [showCatForm, setShowCatForm] = useState(false);
   const [catName, setCatName] = useState("");
@@ -582,6 +584,36 @@ export function SettingsScreen() {
           </div>
         </div>
       </section>
+
+      {/* Account Settings / Log Out */}
+      {cloud && user && (
+        <section className="mb-6">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Account
+          </h2>
+          <div className="rounded-xl bg-card border border-border/50 p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <span className="text-sm font-medium text-foreground">Logged in as</span>
+                <p className="text-xs text-muted-foreground truncate leading-snug">{user.email}</p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={async () => {
+                  const supabase = createBrowserSupabase();
+                  await supabase.auth.signOut();
+                  toast.success("Logged out successfully");
+                }}
+                className="shrink-0 h-9 rounded-xl flex items-center gap-1.5"
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Add category sheet */}
       <Sheet open={showCatForm} onOpenChange={setShowCatForm}>

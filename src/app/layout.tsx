@@ -51,8 +51,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <DailyUpdateReminderScheduler />
             <AIAgent />
             <div className="min-h-screen pb-20">{children}</div>
+            <BottomNav />
           </SpendDataProvider>
-          <BottomNav />
           <GlobalToaster />
         </ThemeProvider>
       </body>
