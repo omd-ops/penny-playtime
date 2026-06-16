@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+import type { User } from "@supabase/supabase-js";
+import { LandingPage } from "@/components/LandingPage";
 import type {
   AppSettings,
   BudgetTarget,
@@ -22,6 +24,7 @@ import type {
 } from "./store";
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS as STORE_DEFAULT_SETTINGS } from "./store";
 import { createBrowserSupabase } from "@/lib/supabase/client";
+import { BoneyardSkeleton } from "@/components/BoneyardSkeleton";
 
 const DEFAULT_SETTINGS: AppSettings = STORE_DEFAULT_SETTINGS;
 
@@ -98,39 +101,39 @@ function cleanupLegacyKeys() {
   }
 }
 
-type Ctx = {
-  ready: boolean;
-  cloud: boolean;
+const CloudCtx = createContext<{ ready: boolean; cloud: boolean; user: User | null } | null>(null);
+const CategoriesCtx = createContext<{
   categories: Category[];
   setCategories: (u: Category[] | ((p: Category[]) => Category[])) => void;
+} | null>(null);
+const ExpensesCtx = createContext<{
   expenses: Expense[];
   setExpenses: (
     u: Expense[] | ((p: Expense[]) => Expense[]),
     immediate?: boolean,
   ) => Promise<void> | void;
+} | null>(null);
+const BudgetTargetsCtx = createContext<{
   budgetTargets: BudgetTarget[];
   setBudgetTargets: (u: BudgetTarget[] | ((p: BudgetTarget[]) => BudgetTarget[])) => void;
+} | null>(null);
+const DayFlagsCtx = createContext<{
   dayFlags: DayFlag[];
   setDayFlags: (u: DayFlag[] | ((p: DayFlag[]) => DayFlag[])) => void;
+} | null>(null);
+const DayGoalsCtx = createContext<{
   dayGoals: DayGoal[];
   setDayGoals: (u: DayGoal[] | ((p: DayGoal[]) => DayGoal[])) => void;
+} | null>(null);
+const SettingsCtx = createContext<{
   settings: AppSettings;
   setSettings: (u: AppSettings | ((p: AppSettings) => AppSettings)) => void;
-};
-
-const SpendCtx = createContext<Ctx | null>(null);
-
-function useSpendCtx() {
-  const ctx = useContext(SpendCtx);
-  if (!ctx) {
-    throw new Error("Spend hooks must be used within SpendDataProvider");
-  }
-  return ctx;
-}
+} | null>(null);
 
 export function SpendDataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [cloud, setCloud] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<GlobalState>(() => readLocalSnapshot());
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -414,63 +417,19 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
     [patch],
   );
 
-  useEffect(() => {
-    const gate = { cancelled: false, timedOut: false };
-    const INIT_TIMEOUT_MS = 30_000;
-
-    async function init() {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-      const supabaseKey =
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-        "";
-
-      if (!supabaseUrl || !supabaseKey) {
-        if (!gate.cancelled) {
-          setCloud(false);
-          setState(readLocalSnapshot());
-          setReady(true);
-        }
-        return;
-      }
-
-      async function runCloudInit() {
+  const loadUserData = useCallback(
+    async (userId: string) => {
+      try {
         const supabase = createBrowserSupabase();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (gate.cancelled || gate.timedOut) return;
-
-        if (!session) {
-          const { error: anonErr } = await supabase.auth.signInAnonymously();
-          if (anonErr) {
-            throw anonErr;
-          }
-        }
-        if (gate.cancelled || gate.timedOut) return;
-
-        const {
-          data: { user },
-          error: userErr,
-        } = await supabase.auth.getUser();
-        if (userErr || !user) {
-          throw userErr ?? new Error("No Supabase user");
-        }
-
-        if (gate.cancelled || gate.timedOut) return;
-        userIdRef.current = user.id;
-
-        // Fetch data from the 6 individual tables
         const [catRes, expRes, tarRes, flaRes, goaRes, setRes] = await Promise.all([
-          supabase.from("categories").select("*").eq("user_id", user.id),
-          supabase.from("expenses").select("*").eq("user_id", user.id),
-          supabase.from("budget_targets").select("*").eq("user_id", user.id),
-          supabase.from("day_flags").select("*").eq("user_id", user.id),
-          supabase.from("day_goals").select("*").eq("user_id", user.id),
-          supabase.from("user_settings").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("categories").select("*").eq("user_id", userId),
+          supabase.from("expenses").select("*").eq("user_id", userId),
+          supabase.from("budget_targets").select("*").eq("user_id", userId),
+          supabase.from("day_flags").select("*").eq("user_id", userId),
+          supabase.from("day_goals").select("*").eq("user_id", userId),
+          supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle(),
         ]);
 
-        if (gate.cancelled || gate.timedOut) return;
         if (catRes.error) throw catRes.error;
         if (expRes.error) throw expRes.error;
         if (tarRes.error) throw tarRes.error;
@@ -481,20 +440,16 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
         const remoteExpenses = expRes.data || [];
         const local = readLocalSnapshot();
 
-        // If local has expenses but remote does not, sync local state to the cloud database
         const shouldUploadLocal = local.expenses.length > 0 && remoteExpenses.length === 0;
         if (shouldUploadLocal) {
-          await pushFullStateToCloud(user.id, local);
-          if (!gate.cancelled && !gate.timedOut) {
-            stateRef.current = local;
-            setState(local);
-            setCloud(true);
-            setReady(true);
-          }
+          await pushFullStateToCloud(userId, local);
+          stateRef.current = local;
+          setState(local);
+          setCloud(true);
+          setReady(true);
           return;
         }
 
-        // Map settings
         const settings: AppSettings = setRes.data
           ? {
               currency: setRes.data.currency,
@@ -514,7 +469,6 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
             }
           : DEFAULT_SETTINGS;
 
-        // Map other collections
         const next: GlobalState = {
           categories:
             catRes.data && catRes.data.length > 0
@@ -556,152 +510,192 @@ export function SpendDataProvider({ children }: { children: ReactNode }) {
           settings,
         };
 
-        // If there's no settings row in the database, insert the full state (so the database gets initialized)
         if (!setRes.data) {
-          await pushFullStateToCloud(user.id, next);
+          await pushFullStateToCloud(userId, next);
         }
 
-        if (!gate.cancelled && !gate.timedOut) {
-          stateRef.current = next;
-          setState(next);
-          writeLocalSnapshot(next);
-          setCloud(true);
-          setReady(true);
-        }
-      }
-
-      const cloudPromise = runCloudInit();
-      void cloudPromise.catch(() => {
-        /* handled in catch below; avoids unhandled rejection if timeout wins first */
-      });
-
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      try {
-        await Promise.race([
-          cloudPromise,
-          new Promise<never>((_, reject) => {
-            timeoutId = setTimeout(() => {
-              gate.timedOut = true;
-              reject(new Error("TIMEOUT"));
-            }, INIT_TIMEOUT_MS);
-          }),
-        ]);
+        stateRef.current = next;
+        setState(next);
+        writeLocalSnapshot(next);
+        setCloud(true);
+        setReady(true);
       } catch (e) {
-        console.error("Supabase init error:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
-        if (gate.cancelled) return;
-        const isTimeout = gate.timedOut && e instanceof Error && e.message === "TIMEOUT";
-        toast.error(
-          isTimeout
-            ? "Cloud sync is taking too long. Using this device only for now."
-            : "Cloud sync unavailable (enable Anonymous sign-in and run the SQL migration, or check env keys). Using this device only.",
-        );
+        console.error("Supabase load user data error:", e);
+        toast.error("Could not sync cloud data. Running offline.");
         setCloud(false);
         setState(readLocalSnapshot());
         setReady(true);
-      } finally {
-        if (timeoutId !== undefined) clearTimeout(timeoutId);
       }
+    },
+    [pushFullStateToCloud],
+  );
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+    const supabaseKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      "";
+
+    if (!supabaseUrl || !supabaseKey) {
+      setCloud(false);
+      setState(readLocalSnapshot());
+      setReady(true);
+      return;
     }
 
-    void init();
-    return () => {
-      gate.cancelled = true;
-    };
-  }, [pushFullStateToCloud]);
+    const supabase = createBrowserSupabase();
 
-  const value = useMemo<Ctx>(
-    () => ({
-      ready,
-      cloud,
-      categories: state.categories,
-      setCategories,
-      expenses: state.expenses,
-      setExpenses,
-      budgetTargets: state.budgetTargets,
-      setBudgetTargets,
-      dayFlags: state.dayFlags,
-      setDayFlags,
-      dayGoals: state.dayGoals,
-      setDayGoals,
-      settings: state.settings,
-      setSettings,
-    }),
-    [
-      ready,
-      cloud,
-      state.categories,
-      state.expenses,
-      state.budgetTargets,
-      state.dayFlags,
-      state.dayGoals,
-      state.settings,
-      setCategories,
-      setExpenses,
-      setBudgetTargets,
-      setDayFlags,
-      setDayGoals,
-      setSettings,
-    ],
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        userIdRef.current = session.user.id;
+        void loadUserData(session.user.id);
+      } else {
+        setUser(null);
+        userIdRef.current = null;
+        setReady(true);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        setUser(session.user);
+        userIdRef.current = session.user.id;
+        void loadUserData(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        userIdRef.current = null;
+        const defaultState: GlobalState = {
+          categories: DEFAULT_CATEGORIES,
+          expenses: [],
+          budgetTargets: [],
+          dayFlags: [],
+          dayGoals: [],
+          settings: DEFAULT_SETTINGS,
+        };
+        stateRef.current = defaultState;
+        setState(defaultState);
+        writeLocalSnapshot(defaultState);
+        setCloud(false);
+        setReady(true);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadUserData]);
+
+  const cloudVal = useMemo(() => ({ ready, cloud, user }), [ready, cloud, user]);
+  const categoriesVal = useMemo(
+    () => ({ categories: state.categories, setCategories }),
+    [state.categories, setCategories],
+  );
+  const expensesVal = useMemo(
+    () => ({ expenses: state.expenses, setExpenses }),
+    [state.expenses, setExpenses],
+  );
+  const budgetTargetsVal = useMemo(
+    () => ({ budgetTargets: state.budgetTargets, setBudgetTargets }),
+    [state.budgetTargets, setBudgetTargets],
+  );
+  const dayFlagsVal = useMemo(
+    () => ({ dayFlags: state.dayFlags, setDayFlags }),
+    [state.dayFlags, setDayFlags],
+  );
+  const dayGoalsVal = useMemo(
+    () => ({ dayGoals: state.dayGoals, setDayGoals }),
+    [state.dayGoals, setDayGoals],
+  );
+  const settingsVal = useMemo(
+    () => ({ settings: state.settings, setSettings }),
+    [state.settings, setSettings],
   );
 
   if (!ready) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground">
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-          aria-hidden
-        />
-        <p className="text-sm">Loading your data…</p>
-      </div>
-    );
+    return <BoneyardSkeleton />;
   }
 
-  return <SpendCtx.Provider value={value}>{children}</SpendCtx.Provider>;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    "";
+
+  if (!user && supabaseUrl && supabaseKey) {
+    return <LandingPage />;
+  }
+
+  return (
+    <CloudCtx.Provider value={cloudVal}>
+      <CategoriesCtx.Provider value={categoriesVal}>
+        <ExpensesCtx.Provider value={expensesVal}>
+          <BudgetTargetsCtx.Provider value={budgetTargetsVal}>
+            <DayFlagsCtx.Provider value={dayFlagsVal}>
+              <DayGoalsCtx.Provider value={dayGoalsVal}>
+                <SettingsCtx.Provider value={settingsVal}>{children}</SettingsCtx.Provider>
+              </DayGoalsCtx.Provider>
+            </DayFlagsCtx.Provider>
+          </BudgetTargetsCtx.Provider>
+        </ExpensesCtx.Provider>
+      </CategoriesCtx.Provider>
+    </CloudCtx.Provider>
+  );
 }
 
 export function useCategories(): [
   Category[],
   (u: Category[] | ((p: Category[]) => Category[])) => void,
 ] {
-  const { categories, setCategories } = useSpendCtx();
-  return [categories, setCategories];
+  const ctx = useContext(CategoriesCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.categories, ctx.setCategories];
 }
 
 export function useExpenses(): [
   Expense[],
   (u: Expense[] | ((p: Expense[]) => Expense[]), immediate?: boolean) => Promise<void> | void,
 ] {
-  const { expenses, setExpenses } = useSpendCtx();
-  return [expenses, setExpenses];
+  const ctx = useContext(ExpensesCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.expenses, ctx.setExpenses];
 }
 
 export function useBudgetTargets(): [
   BudgetTarget[],
   (u: BudgetTarget[] | ((p: BudgetTarget[]) => BudgetTarget[])) => void,
 ] {
-  const { budgetTargets, setBudgetTargets } = useSpendCtx();
-  return [budgetTargets, setBudgetTargets];
+  const ctx = useContext(BudgetTargetsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.budgetTargets, ctx.setBudgetTargets];
 }
 
 export function useDayFlags(): [DayFlag[], (u: DayFlag[] | ((p: DayFlag[]) => DayFlag[])) => void] {
-  const { dayFlags, setDayFlags } = useSpendCtx();
-  return [dayFlags, setDayFlags];
+  const ctx = useContext(DayFlagsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.dayFlags, ctx.setDayFlags];
 }
 
 export function useDayGoals(): [DayGoal[], (u: DayGoal[] | ((p: DayGoal[]) => DayGoal[])) => void] {
-  const { dayGoals, setDayGoals } = useSpendCtx();
-  return [dayGoals, setDayGoals];
+  const ctx = useContext(DayGoalsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.dayGoals, ctx.setDayGoals];
 }
 
 export function useSettings(): [
   AppSettings,
   (u: AppSettings | ((p: AppSettings) => AppSettings)) => void,
 ] {
-  const { settings, setSettings } = useSpendCtx();
-  return [settings, setSettings];
+  const ctx = useContext(SettingsCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return [ctx.settings, ctx.setSettings];
 }
 
-export function useCloudStatus(): { ready: boolean; cloud: boolean } {
-  const { ready, cloud } = useSpendCtx();
-  return { ready, cloud };
+export function useCloudStatus(): { ready: boolean; cloud: boolean; user: User | null } {
+  const ctx = useContext(CloudCtx);
+  if (!ctx) throw new Error("Must be used within SpendDataProvider");
+  return { ready: ctx.ready, cloud: ctx.cloud, user: ctx.user };
 }

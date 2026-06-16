@@ -57,6 +57,7 @@ export function ExpensesScreen() {
   const [dateFilter, setDateFilter] = useState<"all" | "daily" | "weekly" | "monthly" | "yearly">(
     "all",
   );
+  const [referenceDate, setReferenceDate] = useState<string>(todayStr());
 
   const hasActiveFilters =
     searchQuery !== "" ||
@@ -67,23 +68,56 @@ export function ExpensesScreen() {
 
   const catMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
-  const filtered = useMemo(() => {
-    const todayDateStr = todayStr();
-    const currentMonth = todayDateStr.substring(0, 7);
-    const currentYear = todayDateStr.substring(0, 4);
-    const todayObj = new Date(todayDateStr + "T12:00:00");
-    const sevenDaysAgoObj = new Date(todayObj);
-    sevenDaysAgoObj.setDate(todayObj.getDate() - 7);
+  const dateRange = useMemo(() => {
+    if (dateFilter === "all") return null;
+    const ref = new Date(referenceDate + "T12:00:00");
+    let start = new Date(ref);
+    let end = new Date(ref);
 
+    if (dateFilter === "daily") {
+      start = ref;
+      end = ref;
+    } else if (dateFilter === "weekly") {
+      start.setDate(ref.getDate() - 6);
+      end = ref;
+    } else if (dateFilter === "monthly") {
+      start = new Date(ref.getFullYear(), ref.getMonth(), 1);
+      end = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
+    } else if (dateFilter === "yearly") {
+      start = new Date(ref.getFullYear(), 0, 1);
+      end = new Date(ref.getFullYear(), 11, 31);
+    }
+
+    const fmt = (d: Date) =>
+      d
+        .toLocaleDateString("default", { day: "2-digit", month: "short", year: "numeric" })
+        .replace(/ /g, "-");
+
+    const startStr = start.toISOString().split("T")[0];
+    const endStr = end.toISOString().split("T")[0];
+
+    const label = dateFilter === "daily" ? fmt(start) : `${fmt(start)} - ${fmt(end)}`;
+
+    return { startStr, endStr, label };
+  }, [dateFilter, referenceDate]);
+
+  function navigateDate(dir: number) {
+    const d = new Date(referenceDate + "T12:00:00");
+    if (dateFilter === "daily") d.setDate(d.getDate() + dir);
+    else if (dateFilter === "weekly") d.setDate(d.getDate() + dir * 7);
+    else if (dateFilter === "monthly") d.setMonth(d.getMonth() + dir);
+    else if (dateFilter === "yearly") d.setFullYear(d.getFullYear() + dir);
+    setReferenceDate(d.toISOString().split("T")[0]);
+  }
+
+  const filtered = useMemo(() => {
     return expenses.filter((exp) => {
       // Date filters
-      if (dateFilter === "daily" && exp.date !== todayDateStr) return false;
-      if (dateFilter === "weekly") {
-        const expD = new Date(exp.date + "T12:00:00");
-        if (expD < sevenDaysAgoObj || expD > todayObj) return false;
+      if (dateFilter !== "all" && dateRange) {
+        if (exp.date < dateRange.startStr || exp.date > dateRange.endStr) {
+          return false;
+        }
       }
-      if (dateFilter === "monthly" && !exp.date.startsWith(currentMonth)) return false;
-      if (dateFilter === "yearly" && !exp.date.startsWith(currentYear)) return false;
 
       // 1. Search Query filter (matches note or category name)
       if (searchQuery.trim()) {
@@ -314,7 +348,10 @@ export function ExpensesScreen() {
             {(["all", "daily", "weekly", "monthly", "yearly"] as const).map((filter) => (
               <button
                 key={filter}
-                onClick={() => setDateFilter(filter)}
+                onClick={() => {
+                  setDateFilter(filter);
+                  setReferenceDate(todayStr());
+                }}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${
                   dateFilter === filter
                     ? "bg-primary text-primary-foreground border-primary"
@@ -325,6 +362,41 @@ export function ExpensesScreen() {
               </button>
             ))}
           </div>
+
+          {dateFilter !== "all" && dateRange && (
+            <div className="flex items-center justify-between bg-primary text-primary-foreground rounded-lg px-2 py-1.5 mt-1 shadow-sm">
+              <button
+                onClick={() => navigateDate(-1)}
+                className="p-1 hover:bg-primary-foreground/20 rounded transition-colors"
+                aria-label="Previous period"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="relative flex-1 flex justify-center items-center overflow-hidden mx-2 h-6">
+                <span className="text-xs font-bold tracking-wide pointer-events-none">
+                  {dateRange.label}
+                </span>
+                <input
+                  type="date"
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  value={referenceDate}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setReferenceDate(e.target.value);
+                    }
+                  }}
+                  title="Tap or long-press to pick a custom date"
+                />
+              </div>
+              <button
+                onClick={() => navigateDate(1)}
+                className="p-1 hover:bg-primary-foreground/20 rounded transition-colors"
+                aria-label="Next period"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -492,12 +564,10 @@ export function ExpensesScreen() {
               <label className="text-sm font-medium text-foreground" htmlFor="exp-date">
                 Date
               </label>
-              <div className="flex items-center gap-2 mt-1">
-                <Button
+              <div className="flex items-center justify-between h-12 bg-primary text-primary-foreground rounded-xl px-2 mt-1 shadow-sm focus-within:ring-2 focus-within:ring-primary/50">
+                <button
                   type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 shrink-0 border-border/50 bg-background/50"
+                  className="h-8 w-8 flex items-center justify-center hover:bg-primary-foreground/20 rounded transition-colors"
                   onClick={() => {
                     const d = new Date(date + "T12:00:00");
                     d.setDate(d.getDate() - 1);
@@ -505,19 +575,20 @@ export function ExpensesScreen() {
                   }}
                 >
                   <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <Input
-                  id="exp-date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="h-12 flex-1"
-                />
-                <Button
+                </button>
+                <div className="flex-1 flex justify-center px-2 relative">
+                  <input
+                    id="exp-date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="bg-transparent border-none text-center font-bold text-sm tracking-wide text-primary-foreground focus:ring-0 focus:outline-none w-full max-w-[160px] cursor-pointer color-scheme-dark"
+                    style={{ colorScheme: "dark" }}
+                  />
+                </div>
+                <button
                   type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 shrink-0 border-border/50 bg-background/50"
+                  className="h-8 w-8 flex items-center justify-center hover:bg-primary-foreground/20 rounded transition-colors"
                   onClick={() => {
                     const d = new Date(date + "T12:00:00");
                     d.setDate(d.getDate() + 1);
@@ -525,7 +596,7 @@ export function ExpensesScreen() {
                   }}
                 >
                   <ChevronRight className="h-5 w-5" />
-                </Button>
+                </button>
               </div>
             </div>
             <Button

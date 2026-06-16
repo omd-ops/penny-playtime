@@ -152,6 +152,87 @@ export function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+export function calculateHabitStreaks(
+  dayFlags: DayFlag[],
+  dailyHabitItems: ImportantNoteItem[],
+): { currentStreak: number; longestStreak: number } {
+  // Get all dates where habits were fully completed
+  const completedDates = dayFlags
+    .filter((flag) => {
+      if (dailyHabitItems && dailyHabitItems.length > 0) {
+        const completed = flag.completedHabitIds || [];
+        return dailyHabitItems.every((item) => completed.includes(item.id));
+      }
+      return flag.metTarget === true;
+    })
+    .map((flag) => flag.date)
+    // Sort dates ascendingly
+    .sort();
+
+  if (completedDates.length === 0) {
+    return { currentStreak: 0, longestStreak: 0 };
+  }
+
+  // Calculate current streak
+  let currentStreak = 0;
+  const today = todayStr();
+
+  const getPrevDateStr = (dateStr: string) => {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  // We start scanning from today or yesterday
+  let checkDate = today;
+  if (completedDates.includes(today)) {
+    // Today is complete, so streak is active including today
+    while (completedDates.includes(checkDate)) {
+      currentStreak++;
+      checkDate = getPrevDateStr(checkDate);
+    }
+  } else {
+    // Today is not complete, check if yesterday was complete
+    const yesterday = getPrevDateStr(today);
+    if (completedDates.includes(yesterday)) {
+      checkDate = yesterday;
+      while (completedDates.includes(checkDate)) {
+        currentStreak++;
+        checkDate = getPrevDateStr(checkDate);
+      }
+    }
+  }
+
+  // Calculate longest streak
+  let longestStreak = 0;
+  let tempStreak = 0;
+  let lastCheckedDateStr = "";
+
+  for (const dateStr of completedDates) {
+    if (lastCheckedDateStr === "") {
+      tempStreak = 1;
+    } else {
+      const expectedNext = getPrevDateStr(dateStr);
+      if (lastCheckedDateStr === expectedNext) {
+        // lastCheckedDateStr was exactly the day before dateStr
+        tempStreak++;
+      } else {
+        if (tempStreak > longestStreak) {
+          longestStreak = tempStreak;
+        }
+        tempStreak = 1;
+      }
+    }
+    lastCheckedDateStr = dateStr;
+  }
+  if (tempStreak > longestStreak) {
+    longestStreak = tempStreak;
+  }
+
+  return { currentStreak, longestStreak };
+}
+
 export function getExpensesForDate(expenses: Expense[], date: string) {
   return expenses.filter((e) => e.date === date);
 }

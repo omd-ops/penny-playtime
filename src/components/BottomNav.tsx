@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Receipt, CalendarDays, StickyNote, Settings } from "lucide-react";
 
+import { useCloudStatus } from "@/lib/spend-store";
+
 const tabs = [
   { href: "/", icon: Home, label: "Overview" },
   { href: "/expenses", icon: Receipt, label: "Expenses" },
@@ -14,6 +16,17 @@ const tabs = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { user } = useCloudStatus();
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    "";
+
+  if (!user && supabaseUrl && supabaseKey) {
+    return null;
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur-md safe-area-bottom">

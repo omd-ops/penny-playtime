@@ -9,6 +9,7 @@ import {
   useCloudStatus,
 } from "@/lib/spend-store";
 import { generateId, type Category, type BudgetTarget, type Expense } from "@/lib/store";
+import { createBrowserSupabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +39,7 @@ import {
   Download,
   FileText,
   Sparkles,
+  LogOut,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { DailyUpdateReminderSettings } from "@/components/DailyUpdateReminderSettings";
@@ -50,10 +52,7 @@ export function SettingsScreen() {
   const [settings, setSettings] = useSettings();
   const [expenses, setExpenses] = useExpenses();
   const { theme, setTheme, resolved } = useTheme();
-  const { cloud } = useCloudStatus();
-
-  const [tempApiKey, setTempApiKey] = useState(settings.aiApiKey || "");
-  const [tempModelName, setTempModelName] = useState(settings.aiModelName || "");
+  const { cloud, user } = useCloudStatus();
 
   const [showCatForm, setShowCatForm] = useState(false);
   const [catName, setCatName] = useState("");
@@ -393,68 +392,6 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      {/* AI Configuration */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          AI Assistant Settings
-        </h2>
-        <div className="space-y-3 rounded-xl bg-card p-3 border border-border/50">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Gemini API Key (Optional overrides ENV)
-            </label>
-            <div className="relative">
-              <Input
-                type="password"
-                placeholder="AIzaSy..."
-                value={tempApiKey}
-                onChange={(e) => setTempApiKey(e.target.value)}
-                className="h-10 text-sm pr-16"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                className="absolute right-1 top-1 bottom-1 h-8 text-xs"
-                onClick={() => {
-                  setSettings((prev) => ({ ...prev, aiApiKey: tempApiKey }));
-                  toast.success("API Key saved");
-                }}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">
-              Model Name (Optional overrides ENV)
-            </label>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="gemini-2.5-flash"
-                value={tempModelName}
-                onChange={(e) => setTempModelName(e.target.value)}
-                className="h-10 text-sm pr-16"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                className="absolute right-1 top-1 bottom-1 h-8 text-xs"
-                onClick={() => {
-                  setSettings((prev) => ({ ...prev, aiModelName: tempModelName }));
-                  toast.success("Model Name saved");
-                }}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground leading-tight">
-            These credentials are saved locally in your browser. Leave blank to use server defaults.
-          </p>
-        </div>
-      </section>
-
       {/* Floating AI Agent Button Settings */}
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -647,6 +584,36 @@ export function SettingsScreen() {
           </div>
         </div>
       </section>
+
+      {/* Account Settings / Log Out */}
+      {cloud && user && (
+        <section className="mb-6">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            Account
+          </h2>
+          <div className="rounded-xl bg-card border border-border/50 p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <span className="text-sm font-medium text-foreground">Logged in as</span>
+                <p className="text-xs text-muted-foreground truncate leading-snug">{user.email}</p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={async () => {
+                  const supabase = createBrowserSupabase();
+                  await supabase.auth.signOut();
+                  toast.success("Logged out successfully");
+                }}
+                className="shrink-0 h-9 rounded-xl flex items-center gap-1.5"
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Add category sheet */}
       <Sheet open={showCatForm} onOpenChange={setShowCatForm}>
